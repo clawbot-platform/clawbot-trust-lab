@@ -17,6 +17,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ControlPlaneTimeout.String() != "5s" {
 		t.Fatalf("unexpected ControlPlaneTimeout: %s", cfg.ControlPlaneTimeout)
 	}
+	if cfg.ScenarioPacksDir != "./configs/scenario-packs" {
+		t.Fatalf("unexpected ScenarioPacksDir: %s", cfg.ScenarioPacksDir)
+	}
 }
 
 func TestLoadRequiresURLs(t *testing.T) {

@@ -10,3 +10,17 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
 }
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]any{
+		"error": map[string]any{
+			"message": message,
+		},
+	})
+}
+
+func decodeJSON(r *http.Request, out any) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(out)
+}

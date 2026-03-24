@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"clawbot-trust-lab/internal/http/handlers"
-	"clawbot-trust-lab/internal/http/middleware"
 )
 
 type Services struct {
@@ -20,15 +19,33 @@ func New(loggerMiddleware func(http.Handler) http.Handler, services Services) ht
 	mux.HandleFunc("/version", services.System.Version)
 
 	mux.HandleFunc("/api/v1/scenarios/types", services.TrustLab.ScenarioTypes)
+	mux.HandleFunc("/api/v1/scenarios/packs", services.TrustLab.ListPacks)
+	mux.HandleFunc("/api/v1/scenarios/packs/{id}", services.TrustLab.GetPack)
 	mux.HandleFunc("/api/v1/replay/status", services.TrustLab.ReplayStatus)
+	mux.HandleFunc("/api/v1/replay/cases", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			services.TrustLab.ListReplayCases(w, r)
+		case http.MethodPost:
+			services.TrustLab.CreateReplayCase(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 	mux.HandleFunc("/api/v1/trust/status", services.TrustLab.TrustStatus)
+	mux.HandleFunc("/api/v1/trust/artifacts", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			services.TrustLab.ListArtifacts(w, r)
+		case http.MethodPost:
+			services.TrustLab.CreateArtifact(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 	mux.HandleFunc("/api/v1/benchmark/status", services.TrustLab.BenchmarkStatus)
+	mux.HandleFunc("/api/v1/benchmark/rounds/register", services.TrustLab.RegisterBenchmarkRound)
+	mux.HandleFunc("/api/v1/benchmark/rounds/status", services.TrustLab.BenchmarkRoundStatus)
 
 	return loggerMiddleware(mux)
 }
-
-func LoggerChain(loggerMiddleware func(http.Handler) http.Handler) func(http.Handler) http.Handler {
-	return loggerMiddleware
-}
-
-var _ = middleware.RequestLogger

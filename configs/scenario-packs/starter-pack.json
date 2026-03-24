@@ -1,0 +1,30 @@
+{
+  "id": "starter-pack",
+  "name": "Starter Trust Pack",
+  "version": "v1",
+  "description": "Phase 3 starter scenarios for trust-artifact and replay flows.",
+  "scenarios": [
+    {
+      "id": "starter-mandate-review",
+      "name": "Starter Mandate Review",
+      "version": "v1",
+      "scenario_type": "mandate_review",
+      "description": "Review a starter mandate and produce a first trust artifact.",
+      "actors": ["reviewer", "operator"],
+      "trust_signals": ["mandate-source", "policy-alignment"],
+      "expected_outcomes": ["trust-artifact-created", "replay-case-recorded"],
+      "tags": ["starter", "phase-3", "mandate"]
+    },
+    {
+      "id": "starter-policy-drift",
+      "name": "Starter Policy Drift",
+      "version": "v1",
+      "scenario_type": "policy_drift",
+      "description": "Capture a simple policy drift trust signal with provenance metadata.",
+      "actors": ["reviewer"],
+      "trust_signals": ["drift-detected", "provenance-recorded"],
+      "expected_outcomes": ["provenance-artifact-created"],
+      "tags": ["starter", "phase-3", "provenance"]
+    }
+  ]
+}

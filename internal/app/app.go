@@ -32,12 +32,15 @@ func NewLogger(level string, writer io.Writer) *slog.Logger {
 }
 
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
-	deps := bootstrap.Build(cfg)
+	deps, err := bootstrap.Build(cfg)
+	if err != nil {
+		return err
+	}
 
 	system := handlers.NewSystemHandler(func(ctx context.Context) error {
 		return bootstrap.Ready(ctx, deps)
 	}, version.Current())
-	trustLab := handlers.NewTrustLabHandler(deps.Scenarios, handlers.TrustLabState{
+	trustLab := handlers.NewTrustLabHandler(deps.Scenarios, deps.Trust, deps.Replay, deps.Benchmark, handlers.TrustLabState{
 		AppEnv:          cfg.AppEnv,
 		ControlPlaneURL: cfg.ControlPlaneURL,
 		MemoryURL:       cfg.MemoryURL,

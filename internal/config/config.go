@@ -16,15 +16,19 @@ type Config struct {
 	ControlPlaneTimeout time.Duration
 	MemoryURL           string
 	MemoryTimeout       time.Duration
+	ScenarioPacksDir    string
+	ReplayArchiveDir    string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		AppEnv:          envOrDefault("APP_ENV", "development"),
-		ServiceAddress:  envOrDefault("SERVICE_ADDRESS", "127.0.0.1:8090"),
-		LogLevel:        envOrDefault("LOG_LEVEL", "info"),
-		ControlPlaneURL: strings.TrimSpace(os.Getenv("CONTROL_PLANE_BASE_URL")),
-		MemoryURL:       strings.TrimSpace(os.Getenv("MEMORY_BASE_URL")),
+		AppEnv:           envOrDefault("APP_ENV", "development"),
+		ServiceAddress:   envOrDefault("SERVICE_ADDRESS", "127.0.0.1:8090"),
+		LogLevel:         envOrDefault("LOG_LEVEL", "info"),
+		ControlPlaneURL:  strings.TrimSpace(os.Getenv("CONTROL_PLANE_BASE_URL")),
+		MemoryURL:        strings.TrimSpace(os.Getenv("MEMORY_BASE_URL")),
+		ScenarioPacksDir: envOrDefault("SCENARIO_PACKS_DIR", "./configs/scenario-packs"),
+		ReplayArchiveDir: envOrDefault("REPLAY_ARCHIVE_DIR", "./var/replay-archive"),
 	}
 
 	var err error
@@ -49,6 +53,12 @@ func Load() (Config, error) {
 	}
 	if cfg.ServiceAddress == "" {
 		return Config{}, fmt.Errorf("SERVICE_ADDRESS is required")
+	}
+	if cfg.ScenarioPacksDir == "" {
+		return Config{}, fmt.Errorf("SCENARIO_PACKS_DIR is required")
+	}
+	if cfg.ReplayArchiveDir == "" {
+		return Config{}, fmt.Errorf("REPLAY_ARCHIVE_DIR is required")
 	}
 
 	return cfg, nil

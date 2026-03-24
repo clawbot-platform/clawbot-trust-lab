@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"clawbot-trust-lab/internal/domain/benchmark"
 )
 
 type Client interface {
@@ -16,7 +18,7 @@ type Client interface {
 	CreateRun(context.Context, CreateRunRequest) (RunRef, error)
 	ListPolicies(context.Context) ([]PolicyRef, error)
 	CreatePolicy(context.Context, CreatePolicyRequest) (PolicyRef, error)
-	RegisterBenchmarkMetadata(context.Context, BenchmarkMetadata) error
+	RegisterBenchmarkMetadata(context.Context, benchmark.RegistrationRequest) (benchmark.RegistrationResult, error)
 }
 
 type RunRef struct {
@@ -46,12 +48,6 @@ type CreatePolicyRequest struct {
 	Enabled     bool           `json:"enabled"`
 	Description string         `json:"description"`
 	RulesJSON   map[string]any `json:"rules_json"`
-}
-
-type BenchmarkMetadata struct {
-	BenchmarkID string         `json:"benchmark_id"`
-	SuiteType   string         `json:"suite_type"`
-	Metadata    map[string]any `json:"metadata"`
 }
 
 type HTTPClient struct {
@@ -122,8 +118,12 @@ func (c *HTTPClient) CreatePolicy(ctx context.Context, input CreatePolicyRequest
 	return response.Data, nil
 }
 
-func (c *HTTPClient) RegisterBenchmarkMetadata(context.Context, BenchmarkMetadata) error {
-	return nil
+func (c *HTTPClient) RegisterBenchmarkMetadata(_ context.Context, request benchmark.RegistrationRequest) (benchmark.RegistrationResult, error) {
+	return benchmark.RegistrationResult{
+		RegistrationID: "cp-stub-" + request.ScenarioPackID,
+		Status:         "accepted_stub",
+		RegisteredAt:   time.Now().UTC(),
+	}, nil
 }
 
 func (c *HTTPClient) doJSON(ctx context.Context, method string, path string, request any, out any) error {

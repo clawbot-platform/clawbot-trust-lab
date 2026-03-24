@@ -2,9 +2,6 @@ package memory
 
 import (
 	"context"
-
-	"clawbot-trust-lab/internal/domain/replay"
-	"clawbot-trust-lab/internal/domain/trust"
 )
 
 type Client interface {
@@ -15,7 +12,10 @@ type Client interface {
 }
 
 type StoreReplayCaseRequest struct {
-	Case replay.ReplayCase `json:"case"`
+	ReplayCaseID string         `json:"replay_case_id"`
+	ScenarioID   string         `json:"scenario_id"`
+	Summary      string         `json:"summary"`
+	Metadata     map[string]any `json:"metadata"`
 }
 
 type FetchSimilarCasesRequest struct {
@@ -24,11 +24,14 @@ type FetchSimilarCasesRequest struct {
 }
 
 type FetchSimilarCasesResponse struct {
-	Cases []replay.ReplayCase `json:"cases"`
+	Cases []map[string]any `json:"cases"`
 }
 
 type StoreTrustArtifactRequest struct {
-	Artifact trust.TrustArtifact `json:"artifact"`
+	ArtifactID string         `json:"artifact_id"`
+	ScenarioID string         `json:"scenario_id"`
+	Summary    string         `json:"summary"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
 type LoadScenarioContextRequest struct {
@@ -57,7 +60,7 @@ func (c *StubClient) StoreReplayCase(context.Context, StoreReplayCaseRequest) er
 }
 
 func (c *StubClient) FetchSimilarCases(context.Context, FetchSimilarCasesRequest) (FetchSimilarCasesResponse, error) {
-	return FetchSimilarCasesResponse{Cases: []replay.ReplayCase{}}, nil
+	return FetchSimilarCasesResponse{Cases: []map[string]any{}}, nil
 }
 
 func (c *StubClient) StoreTrustArtifact(context.Context, StoreTrustArtifactRequest) error {

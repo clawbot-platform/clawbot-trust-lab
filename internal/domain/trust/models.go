@@ -3,13 +3,16 @@ package trust
 import "time"
 
 type TrustArtifact struct {
-	ID             string             `json:"id"`
-	ArtifactType   string             `json:"artifact_type"`
-	ScenarioID     string             `json:"scenario_id"`
-	Mandate        MandateArtifact    `json:"mandate"`
-	Provenance     ProvenanceArtifact `json:"provenance"`
-	PolicyDecision PolicyDecisionRef  `json:"policy_decision"`
-	CreatedAt      time.Time          `json:"created_at"`
+	ID               string              `json:"id"`
+	ArtifactFamily   string              `json:"artifact_family"`
+	ArtifactType     string              `json:"artifact_type"`
+	SourceScenarioID string              `json:"source_scenario_id"`
+	Summary          string              `json:"summary"`
+	Metadata         map[string]any      `json:"metadata"`
+	Mandate          *MandateArtifact    `json:"mandate,omitempty"`
+	Provenance       *ProvenanceArtifact `json:"provenance,omitempty"`
+	PolicyDecision   PolicyDecisionRef   `json:"policy_decision"`
+	CreatedAt        time.Time           `json:"created_at"`
 }
 
 type MandateArtifact struct {
