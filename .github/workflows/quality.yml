@@ -1,0 +1,18 @@
+name: quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Optional govulncheck reminder
+        run: echo "Additional quality automation can be layered here in later phases without changing repo boundaries."
