@@ -9,10 +9,12 @@ import (
 	"clawbot-trust-lab/internal/clients/memory"
 	"clawbot-trust-lab/internal/domain/benchmark"
 	"clawbot-trust-lab/internal/domain/commerce"
+	detectionmodel "clawbot-trust-lab/internal/domain/detection"
 	domainevents "clawbot-trust-lab/internal/domain/events"
 	"clawbot-trust-lab/internal/domain/replay"
 	"clawbot-trust-lab/internal/domain/scenario"
 	"clawbot-trust-lab/internal/domain/trust"
+	detectionsvc "clawbot-trust-lab/internal/services/detection"
 	executionsvc "clawbot-trust-lab/internal/services/scenario"
 )
 
@@ -57,6 +59,14 @@ type TrustDecisionService interface {
 	GetDecision(string) (trust.TrustDecision, error)
 }
 
+type DetectionService interface {
+	Evaluate(context.Context, detectionsvc.EvaluateInput) (detectionmodel.DetectionResult, error)
+	ListResults() []detectionmodel.DetectionResult
+	GetResult(string) (detectionmodel.DetectionResult, error)
+	Rules() []detectionmodel.RuleDefinition
+	Summary() detectionmodel.DetectionRunSummary
+}
+
 type TrustLabState struct {
 	AppEnv          string
 	ControlPlaneURL string
@@ -72,6 +82,7 @@ type TrustLabHandler struct {
 	commerce       CommerceService
 	events         EventService
 	trustDecisions TrustDecisionService
+	detection      DetectionService
 	state          TrustLabState
 }
 
@@ -84,6 +95,7 @@ func NewTrustLabHandler(
 	commerceService CommerceService,
 	eventService EventService,
 	trustDecisionService TrustDecisionService,
+	detectionService DetectionService,
 	state TrustLabState,
 ) *TrustLabHandler {
 	return &TrustLabHandler{
@@ -95,6 +107,7 @@ func NewTrustLabHandler(
 		commerce:       commerceService,
 		events:         eventService,
 		trustDecisions: trustDecisionService,
+		detection:      detectionService,
 		state:          state,
 	}
 }
@@ -131,6 +144,41 @@ func (h *TrustLabHandler) ExecuteScenario(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"data": result})
+}
+
+func (h *TrustLabHandler) EvaluateDetection(w http.ResponseWriter, r *http.Request) {
+	var input detectionsvc.EvaluateInput
+	if err := decodeJSON(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	result, err := h.detection.Evaluate(r.Context(), input)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": result})
+}
+
+func (h *TrustLabHandler) ListDetectionResults(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.detection.ListResults()})
+}
+
+func (h *TrustLabHandler) GetDetectionResult(w http.ResponseWriter, r *http.Request) {
+	item, err := h.detection.GetResult(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": item})
+}
+
+func (h *TrustLabHandler) ListDetectionRules(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.detection.Rules()})
+}
+
+func (h *TrustLabHandler) DetectionSummary(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.detection.Summary()})
 }
 
 func (h *TrustLabHandler) ListPacks(w http.ResponseWriter, _ *http.Request) {

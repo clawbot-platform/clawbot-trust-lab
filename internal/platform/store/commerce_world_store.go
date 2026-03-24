@@ -90,6 +90,27 @@ func (s *CommerceWorldStore) PutRefund(item commerce.Refund) {
 	s.refunds[item.ID] = item
 }
 
+func (s *CommerceWorldStore) ListRefunds() []commerce.Refund {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := make([]commerce.Refund, 0, len(s.refunds))
+	for _, item := range s.refunds {
+		items = append(items, item)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
+func (s *CommerceWorldStore) GetRefund(id string) (commerce.Refund, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	item, ok := s.refunds[id]
+	if !ok {
+		return commerce.Refund{}, fmt.Errorf("refund %s not found", id)
+	}
+	return item, nil
+}
+
 func (s *CommerceWorldStore) ListOrders() []commerce.Order {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -127,6 +148,37 @@ func (s *CommerceWorldStore) PutApproval(item trust.ApprovalRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.approvals[item.ID] = item
+}
+
+func (s *CommerceWorldStore) ListApprovals() []trust.ApprovalRecord {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	items := make([]trust.ApprovalRecord, 0, len(s.approvals))
+	for _, item := range s.approvals {
+		items = append(items, item)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].ID < items[j].ID })
+	return items
+}
+
+func (s *CommerceWorldStore) GetMandate(id string) (trust.Mandate, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	item, ok := s.mandates[id]
+	if !ok {
+		return trust.Mandate{}, fmt.Errorf("mandate %s not found", id)
+	}
+	return item, nil
+}
+
+func (s *CommerceWorldStore) GetProvenance(id string) (trust.ProvenanceRecord, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	item, ok := s.provenance[id]
+	if !ok {
+		return trust.ProvenanceRecord{}, fmt.Errorf("provenance %s not found", id)
+	}
+	return item, nil
 }
 
 func (s *CommerceWorldStore) PutDecision(item trust.TrustDecision) {

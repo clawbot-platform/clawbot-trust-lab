@@ -12,10 +12,12 @@ import (
 	"clawbot-trust-lab/internal/clients/memory"
 	"clawbot-trust-lab/internal/domain/benchmark"
 	"clawbot-trust-lab/internal/domain/commerce"
+	detectionmodel "clawbot-trust-lab/internal/domain/detection"
 	domainevents "clawbot-trust-lab/internal/domain/events"
 	"clawbot-trust-lab/internal/domain/replay"
 	"clawbot-trust-lab/internal/domain/scenario"
 	"clawbot-trust-lab/internal/domain/trust"
+	detectionsvc "clawbot-trust-lab/internal/services/detection"
 	executionsvc "clawbot-trust-lab/internal/services/scenario"
 	"clawbot-trust-lab/internal/version"
 )
@@ -143,6 +145,45 @@ func (s trustDecisionServiceStub) GetDecision(id string) (trust.TrustDecision, e
 	return item, nil
 }
 
+type detectionServiceStub struct {
+	result  detectionmodel.DetectionResult
+	results []detectionmodel.DetectionResult
+	summary detectionmodel.DetectionRunSummary
+	inputs  []detectionsvc.EvaluateInput
+	err     error
+}
+
+func (s *detectionServiceStub) Evaluate(_ context.Context, input detectionsvc.EvaluateInput) (detectionmodel.DetectionResult, error) {
+	s.inputs = append(s.inputs, input)
+	if s.err != nil {
+		return detectionmodel.DetectionResult{}, s.err
+	}
+	return s.result, nil
+}
+
+func (s *detectionServiceStub) ListResults() []detectionmodel.DetectionResult {
+	return append([]detectionmodel.DetectionResult(nil), s.results...)
+}
+
+func (s *detectionServiceStub) GetResult(id string) (detectionmodel.DetectionResult, error) {
+	for _, item := range s.results {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+	return detectionmodel.DetectionResult{}, errors.New("detection result not found")
+}
+
+func (s *detectionServiceStub) Rules() []detectionmodel.RuleDefinition {
+	return []detectionmodel.RuleDefinition{
+		{ID: "refund_weak_authorization", Title: "Refund with weak authorization", Severity: 25},
+	}
+}
+
+func (s *detectionServiceStub) Summary() detectionmodel.DetectionRunSummary {
+	return s.summary
+}
+
 func TestSystemHandlerHealth(t *testing.T) {
 	handler := NewSystemHandler(func(context.Context) error { return nil }, version.Current())
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -268,7 +309,78 @@ func TestTrustLabHandlerRegisterBenchmarkRound(t *testing.T) {
 	}
 }
 
+func TestTrustLabHandlerEvaluateDetection(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/detection/evaluate", bytes.NewBufferString(`{"scenario_id":"commerce-suspicious-refund-attempt"}`))
+	recorder := httptest.NewRecorder()
+
+	handler.EvaluateDetection(recorder, req)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"status":"step_up_required"`)) {
+		t.Fatalf("expected detection response in body: %s", recorder.Body.String())
+	}
+}
+
+func TestTrustLabHandlerListDetectionResults(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/detection/results", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ListDetectionResults(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestTrustLabHandlerDetectionSummary(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/detection/summary", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.DetectionSummary(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"total":1`)) {
+		t.Fatalf("expected total in body: %s", recorder.Body.String())
+	}
+}
+
 func newHandler() *TrustLabHandler {
+	detectionStub := &detectionServiceStub{
+		result: detectionmodel.DetectionResult{
+			ID:             "det-order-suspicious-refund-attempt",
+			ScenarioID:     "commerce-suspicious-refund-attempt",
+			OrderID:        "order-suspicious-refund-attempt",
+			Status:         detectionmodel.DetectionStatusStepUpRequired,
+			Score:          55,
+			Grade:          detectionmodel.RiskGradeHigh,
+			ReasonCodes:    []string{"refund_weak_authorization", "agent_refund_without_approval"},
+			Recommendation: detectionmodel.RecommendationStepUp,
+		},
+		results: []detectionmodel.DetectionResult{{
+			ID:             "det-order-suspicious-refund-attempt",
+			ScenarioID:     "commerce-suspicious-refund-attempt",
+			OrderID:        "order-suspicious-refund-attempt",
+			Status:         detectionmodel.DetectionStatusStepUpRequired,
+			Score:          55,
+			Grade:          detectionmodel.RiskGradeHigh,
+			Recommendation: detectionmodel.RecommendationStepUp,
+		}},
+		summary: detectionmodel.DetectionRunSummary{
+			TotalByStatus: map[detectionmodel.DetectionStatus]int{
+				detectionmodel.DetectionStatusStepUpRequired: 1,
+			},
+			Total:        1,
+			LastResultID: "det-order-suspicious-refund-attempt",
+		},
+	}
+
 	return NewTrustLabHandler(
 		scenarioServiceStub{},
 		executionServiceStub{result: executionsvc.ExecutionResult{
@@ -285,6 +397,7 @@ func newHandler() *TrustLabHandler {
 		trustDecisionServiceStub{items: map[string]trust.TrustDecision{
 			"decision-1": {ID: "decision-1", Outcome: "accepted"},
 		}},
+		detectionStub,
 		TrustLabState{ClawMemBaseURL: "http://127.0.0.1:8088"},
 	)
 }

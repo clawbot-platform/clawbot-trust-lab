@@ -2,7 +2,7 @@
 
 `clawbot-trust-lab` is the flagship trust-lab vertical for the `clawbot-platform` organization.
 
-Phase 5 adds the first real commerce-world baseline on top of the earlier trust, replay, and `clawmem` integration work. The repo can now execute deterministic commerce scenarios that update local state, emit transaction and trust events, record trust decisions, and persist replay plus memory outputs.
+Phase 6 adds the first real detection baseline on top of the earlier commerce-world, replay, and `clawmem` integration work. The repo can now execute deterministic commerce scenarios, emit transaction and trust events, record trust decisions, persist replay plus memory outputs, and evaluate those flows with a deterministic explainable detector.
 
 ## What belongs here
 
@@ -43,6 +43,14 @@ curl -X POST http://127.0.0.1:8090/api/v1/scenarios/execute \
   --data '{"scenario_id":"commerce-clean-agent-assisted-purchase"}'
 ```
 
+Evaluate the Phase 6 baseline detector:
+
+```bash
+curl -X POST http://127.0.0.1:8090/api/v1/detection/evaluate \
+  -H 'Content-Type: application/json' \
+  --data '{"scenario_id":"commerce-suspicious-refund-attempt"}'
+```
+
 Run tests:
 
 ```bash
@@ -54,12 +62,12 @@ go test ./...
 - `cmd/trust-lab/` contains the service entrypoint
 - `internal/app/` wires config, bootstrap, router, and graceful shutdown
 - `internal/domain/` contains trust-lab domain types and Phase 3 plus 4.1 services
-- `internal/services/` contains the Phase 5 commerce, event, trust-decision, and scenario execution layer
+- `internal/services/` contains the Phase 5 commerce, event, trust-decision, scenario execution, and Phase 6 detection layer
 - `internal/clients/` contains external service clients, including the live `clawmem` HTTP client
 - `internal/platform/loader/` loads versioned scenario packs from disk
 - `internal/platform/store/` contains local in-memory and file-backed stores for the trust-lab slice
 - `configs/scenario-packs/` contains starter scenario pack data
-- `docs/` contains Phase 2 through 5 architecture and contributor docs
+- `docs/` contains Phase 2 through 6 architecture and contributor docs
 
 ## Docs
 
@@ -67,6 +75,7 @@ go test ./...
 - [API](./docs/api.md)
 - [Commerce model](./docs/commerce-model.md)
 - [Development](./docs/development.md)
+- [Detection model](./docs/detection-model.md)
 - [Event model](./docs/event-model.md)
 - [Repo layout](./docs/repo-layout.md)
 - [Domain model](./docs/domain-model.md)
@@ -74,4 +83,5 @@ go test ./...
 - [Phase 3 first flow](./docs/phase-3-first-flow.md)
 - [Phase 4.1 clawmem integration](./docs/phase-4-1-clawmem-integration.md)
 - [Phase 5 commerce world](./docs/phase-5-commerce-world.md)
+- [Phase 6 detection baseline](./docs/phase-6-detection-baseline.md)
 - [Scenario pack format](./docs/scenario-pack-format.md)

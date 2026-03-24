@@ -62,6 +62,8 @@ type Service struct {
 	trust     *trustsvc.Service
 	artifacts TrustArtifactWriter
 	replay    ReplayWriter
+	results   map[string]ExecutionResult
+	orderRefs map[string]string
 }
 
 func NewService(scenarios ScenarioCatalog, commerce *commerceSvc.Service, events *eventsvc.Service, trust *trustsvc.Service, artifacts TrustArtifactWriter, replay ReplayWriter) *Service {
@@ -72,6 +74,8 @@ func NewService(scenarios ScenarioCatalog, commerce *commerceSvc.Service, events
 		trust:     trust,
 		artifacts: artifacts,
 		replay:    replay,
+		results:   map[string]ExecutionResult{},
+		orderRefs: map[string]string{},
 	}
 }
 
@@ -87,12 +91,36 @@ func (s *Service) Execute(ctx context.Context, scenarioID string) (ExecutionResu
 
 	switch item.ID {
 	case "commerce-clean-agent-assisted-purchase":
-		return s.executeCleanPurchase(ctx, item)
+		result, err := s.executeCleanPurchase(ctx, item)
+		if err == nil {
+			s.storeResult(result)
+		}
+		return result, err
 	case "commerce-suspicious-refund-attempt":
-		return s.executeSuspiciousRefund(ctx, item)
+		result, err := s.executeSuspiciousRefund(ctx, item)
+		if err == nil {
+			s.storeResult(result)
+		}
+		return result, err
 	default:
 		return ExecutionResult{}, fmt.Errorf("scenario %s is not executable in Phase 5", item.ID)
 	}
+}
+
+func (s *Service) GetExecutionResult(scenarioID string) (ExecutionResult, error) {
+	result, ok := s.results[scenarioID]
+	if !ok {
+		return ExecutionResult{}, fmt.Errorf("scenario %s has not been executed", scenarioID)
+	}
+	return result, nil
+}
+
+func (s *Service) GetExecutionResultByOrderID(orderID string) (ExecutionResult, error) {
+	scenarioID, ok := s.orderRefs[orderID]
+	if !ok {
+		return ExecutionResult{}, fmt.Errorf("order %s has no recorded scenario execution", orderID)
+	}
+	return s.GetExecutionResult(scenarioID)
 }
 
 func (s *Service) executeCleanPurchase(ctx context.Context, item domainscenario.Scenario) (ExecutionResult, error) {
@@ -421,4 +449,11 @@ func (s *Service) seedParticipants(world worldSeed) {
 	s.commerce.PutBuyer(world.buyer)
 	s.commerce.PutMerchant(world.merchant)
 	s.commerce.PutProduct(world.product)
+}
+
+func (s *Service) storeResult(result ExecutionResult) {
+	s.results[result.Scenario.ID] = result
+	for _, orderRef := range result.Entities.OrderRefs {
+		s.orderRefs[orderRef] = result.Scenario.ID
+	}
 }

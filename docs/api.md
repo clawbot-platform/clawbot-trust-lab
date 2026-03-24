@@ -1,6 +1,6 @@
 # API
 
-Phase 5 keeps the earlier trust/replay APIs and adds deterministic commerce-world execution plus inspection endpoints.
+Phase 6 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, and adds a deterministic explainable detection baseline.
 
 ## System
 
@@ -30,6 +30,48 @@ Execution responses summarize:
 - trust decisions
 - replay case refs
 - memory write outcomes
+
+## Detection
+
+- `POST /api/v1/detection/evaluate`
+- `GET /api/v1/detection/results`
+- `GET /api/v1/detection/results/{id}`
+- `GET /api/v1/detection/rules`
+- `GET /api/v1/detection/summary`
+
+Evaluate example:
+
+```json
+{
+  "scenario_id": "commerce-suspicious-refund-attempt"
+}
+```
+
+You can also evaluate by `order_id`:
+
+```json
+{
+  "order_id": "order-clean-agent-assisted-purchase"
+}
+```
+
+Detection responses include:
+- scenario and entity refs
+- status, score, grade, and recommendation
+- triggered baseline rules
+- reason codes
+- linked trust decision and replay refs
+- a serialized detection context in `metadata.context`
+
+`GET /api/v1/detection/rules` lists the active baseline rules:
+- `missing_mandate_delegated_action`
+- `missing_provenance_sensitive_action`
+- `refund_weak_authorization`
+- `agent_refund_without_approval`
+- `prior_step_up_decision`
+- `repeat_suspicious_context`
+
+`GET /api/v1/detection/summary` returns a small aggregate view across stored results, including totals by status and the last result id.
 
 ## Orders
 

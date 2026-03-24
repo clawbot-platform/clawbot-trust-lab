@@ -14,6 +14,7 @@ import (
 	"clawbot-trust-lab/internal/platform/loader"
 	"clawbot-trust-lab/internal/platform/store"
 	servicecommerce "clawbot-trust-lab/internal/services/commerce"
+	servicedetection "clawbot-trust-lab/internal/services/detection"
 	serviceevents "clawbot-trust-lab/internal/services/events"
 	servicescenario "clawbot-trust-lab/internal/services/scenario"
 	servicetrust "clawbot-trust-lab/internal/services/trust"
@@ -30,6 +31,7 @@ type Dependencies struct {
 	Events       *serviceevents.Service
 	TrustFlow    *servicetrust.Service
 	Execution    *servicescenario.Service
+	Detection    *servicedetection.Service
 }
 
 func Build(cfg config.Config) (Dependencies, error) {
@@ -45,12 +47,14 @@ func Build(cfg config.Config) (Dependencies, error) {
 		return Dependencies{}, err
 	}
 	worldStore := store.NewCommerceWorldStore()
+	detectionStore := store.NewDetectionStore()
 	commerceService := servicecommerce.NewService(worldStore)
 	eventService := serviceevents.NewService(worldStore)
 	trustFlowService := servicetrust.NewService(worldStore)
 	trustService := trust.NewService(scenarioService, store.NewInMemoryTrustArtifactStore(), memoryClient)
 	replayService := replay.NewService(replayStore, memoryClient)
 	executionService := servicescenario.NewService(scenarioService, commerceService, eventService, trustFlowService, trustService, replayService)
+	detectionService := servicedetection.NewService(worldStore, executionService, replayService, memoryClient, detectionStore)
 
 	return Dependencies{
 		ControlPlane: controlPlaneClient,
@@ -63,6 +67,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 		Events:       eventService,
 		TrustFlow:    trustFlowService,
 		Execution:    executionService,
+		Detection:    detectionService,
 	}, nil
 }
 
