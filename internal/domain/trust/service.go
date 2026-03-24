@@ -27,7 +27,9 @@ type ArtifactStore interface {
 }
 
 type CreateArtifactInput struct {
-	ScenarioID string `json:"scenario_id"`
+	ScenarioID string    `json:"scenario_id"`
+	ArtifactID string    `json:"artifact_id,omitempty"`
+	CreatedAt  time.Time `json:"created_at,omitempty"`
 }
 
 type MemorySyncError struct {
@@ -74,6 +76,12 @@ func (s *Service) CreateArtifact(ctx context.Context, input CreateArtifactInput)
 			Outcome:       "scaffolded",
 		},
 		CreatedAt: time.Now().UTC(),
+	}
+	if strings.TrimSpace(input.ArtifactID) != "" {
+		artifact.ID = strings.TrimSpace(input.ArtifactID)
+	}
+	if !input.CreatedAt.IsZero() {
+		artifact.CreatedAt = input.CreatedAt.UTC()
 	}
 
 	if item.Type == scenario.ScenarioTypeMandateReview {

@@ -1,0 +1,19 @@
+{
+  "id": "rc-commerce-clean-agent-assisted-purchase",
+  "scenario_id": "commerce-clean-agent-assisted-purchase",
+  "trust_artifact_refs": [
+    "ta-commerce-clean-agent-assisted-purchase"
+  ],
+  "benchmark_round_ref": "phase-5-commerce-baseline",
+  "outcome_summary": "Agent-assisted purchase completed with mandate and provenance coverage.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-commerce-clean-agent-assisted-purchase.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Clean baseline flow is deterministic and trust-complete.",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-24T09:03:00Z"
+}

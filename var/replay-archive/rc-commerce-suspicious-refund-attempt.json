@@ -1,0 +1,19 @@
+{
+  "id": "rc-commerce-suspicious-refund-attempt",
+  "scenario_id": "commerce-suspicious-refund-attempt",
+  "trust_artifact_refs": [
+    "ta-commerce-suspicious-refund-attempt"
+  ],
+  "benchmark_round_ref": "phase-5-commerce-baseline",
+  "outcome_summary": "Refund attempt required step-up because mandate, provenance, and approval coverage were insufficient.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-commerce-suspicious-refund-attempt.json"
+  },
+  "promotion": {
+    "status": "hold",
+    "reason": "Suspicious path should remain available for replay and later detection baselines.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-24T10:10:30Z"
+}

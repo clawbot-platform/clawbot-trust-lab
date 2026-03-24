@@ -20,12 +20,14 @@ type ArchiveStore interface {
 }
 
 type CreateCaseInput struct {
-	ScenarioID              string   `json:"scenario_id"`
-	TrustArtifactRefs       []string `json:"trust_artifact_refs"`
-	BenchmarkRoundRef       string   `json:"benchmark_round_ref"`
-	OutcomeSummary          string   `json:"outcome_summary"`
-	PromotionRecommendation string   `json:"promotion_recommendation"`
-	PromotionReason         string   `json:"promotion_reason"`
+	CaseID                  string    `json:"case_id,omitempty"`
+	ScenarioID              string    `json:"scenario_id"`
+	TrustArtifactRefs       []string  `json:"trust_artifact_refs"`
+	BenchmarkRoundRef       string    `json:"benchmark_round_ref"`
+	OutcomeSummary          string    `json:"outcome_summary"`
+	PromotionRecommendation string    `json:"promotion_recommendation"`
+	PromotionReason         string    `json:"promotion_reason"`
+	RecordedAt              time.Time `json:"recorded_at,omitempty"`
 }
 
 type MemorySyncError struct {
@@ -68,6 +70,12 @@ func (s *Service) CreateCase(ctx context.Context, input CreateCaseInput) (Replay
 			Promoted: strings.EqualFold(input.PromotionRecommendation, "promote"),
 		},
 		RecordedAt: time.Now().UTC(),
+	}
+	if strings.TrimSpace(input.CaseID) != "" {
+		item.ID = strings.TrimSpace(input.CaseID)
+	}
+	if !input.RecordedAt.IsZero() {
+		item.RecordedAt = input.RecordedAt.UTC()
 	}
 	item.ArchiveRef.Key = item.ID + ".json"
 

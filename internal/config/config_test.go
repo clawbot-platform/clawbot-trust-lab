@@ -26,7 +26,9 @@ func TestLoadDefaults(t *testing.T) {
 }
 
 func TestLoadRequiresControlPlaneURL(t *testing.T) {
+	t.Setenv("CONTROL_PLANE_BASE_URL", "")
 	t.Setenv("CLAWMEM_BASE_URL", "http://127.0.0.1:8088")
+
 	if _, err := Load(); err == nil {
 		t.Fatal("expected missing URL validation error")
 	}

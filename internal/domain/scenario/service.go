@@ -10,6 +10,7 @@ type Service struct {
 	packs        map[string]ScenarioPack
 	ordered      []ScenarioPack
 	scenarioByID map[string]Scenario
+	scenarios    []Scenario
 }
 
 func NewService(source PackSource) (*Service, error) {
@@ -27,6 +28,7 @@ func NewService(source PackSource) (*Service, error) {
 		service.ordered = append(service.ordered, pack)
 		for _, scenario := range pack.Scenarios {
 			service.scenarioByID[scenario.ID] = scenario
+			service.scenarios = append(service.scenarios, scenario)
 		}
 	}
 
@@ -53,4 +55,10 @@ func (s *Service) GetScenario(id string) (Scenario, error) {
 		return Scenario{}, fmt.Errorf("scenario %s not found", id)
 	}
 	return item, nil
+}
+
+func (s *Service) ListScenarios() []Scenario {
+	items := make([]Scenario, len(s.scenarios))
+	copy(items, s.scenarios)
+	return items
 }

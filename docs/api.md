@@ -1,6 +1,6 @@
 # API
 
-Phase 4.1 keeps the Phase 3 API surface and upgrades the memory path to use the live `clawmem` service.
+Phase 5 keeps the earlier trust/replay APIs and adds deterministic commerce-world execution plus inspection endpoints.
 
 ## System
 
@@ -10,15 +10,43 @@ Phase 4.1 keeps the Phase 3 API surface and upgrades the memory path to use the 
 
 ## Scenarios
 
+- `GET /api/v1/scenarios`
+- `POST /api/v1/scenarios/execute`
 - `GET /api/v1/scenarios/types`
 - `GET /api/v1/scenarios/packs`
 - `GET /api/v1/scenarios/packs/{id}`
+
+Execute example:
+
+```json
+{
+  "scenario_id": "commerce-clean-agent-assisted-purchase"
+}
+```
+
+Execution responses summarize:
+- the scenario
+- created or updated entity refs
+- trust decisions
+- replay case refs
+- memory write outcomes
+
+## Orders
+
+- `GET /api/v1/orders`
+- `GET /api/v1/orders/{id}`
+
+## Events
+
+- `GET /api/v1/events`
 
 ## Trust
 
 - `POST /api/v1/trust/artifacts`
 - `GET /api/v1/trust/artifacts`
 - `GET /api/v1/trust/status`
+- `GET /api/v1/trust/decisions`
+- `GET /api/v1/trust/decisions/{id}`
 
 `POST /api/v1/trust/artifacts` now requires a successful `clawmem` write. If `clawmem` is unavailable, the endpoint returns `502 Bad Gateway`.
 

@@ -6,8 +6,9 @@
 2. Start `clawbot-server` so `/readyz` can pass the control-plane health check.
 3. Start `clawmem` so trust and replay creation can persist memory records.
 4. Run `go run ./cmd/trust-lab` or `make run`.
-5. Use `go test ./...` or `make test` for validation.
-6. Scenario packs are loaded from `configs/scenario-packs/`.
+5. Execute a Phase 5 scenario through `/api/v1/scenarios/execute`.
+6. Use `go test ./...` or `make test` for validation.
+7. Scenario packs are loaded from `configs/scenario-packs/`.
 
 ## Commands
 

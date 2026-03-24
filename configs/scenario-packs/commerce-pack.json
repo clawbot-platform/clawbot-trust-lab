@@ -1,0 +1,30 @@
+{
+  "id": "commerce-pack",
+  "name": "Commerce World Pack",
+  "version": "v1",
+  "description": "Phase 5 deterministic commerce-world baseline scenarios for trust-lab execution.",
+  "scenarios": [
+    {
+      "id": "commerce-clean-agent-assisted-purchase",
+      "name": "Clean Agent-Assisted Purchase",
+      "version": "v1",
+      "scenario_type": "commerce_purchase",
+      "description": "A delegated assistant submits an order with mandate and provenance coverage, leading to an accepted trust decision and authorized payment.",
+      "actors": ["operator", "reviewer"],
+      "trust_signals": ["active-mandate", "attached-provenance", "delegation-visible"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-accepted", "replay-case-recorded"],
+      "tags": ["commerce", "phase-5", "clean-flow"]
+    },
+    {
+      "id": "commerce-suspicious-refund-attempt",
+      "name": "Suspicious Refund Attempt",
+      "version": "v1",
+      "scenario_type": "commerce_refund_review",
+      "description": "A refund is requested by an agent without strong authority, producing a step-up trust decision and explicit trust failure events.",
+      "actors": ["operator", "reviewer"],
+      "trust_signals": ["expired-mandate", "weak-provenance", "missing-approval"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
+      "tags": ["commerce", "phase-5", "suspicious-flow"]
+    }
+  ]
+}

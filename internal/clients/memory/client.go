@@ -95,7 +95,7 @@ func (c *HTTPClient) Health(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("call clawmem health endpoint: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return readStatusError("clawmem health check", resp)
@@ -203,7 +203,7 @@ func (c *HTTPClient) post(ctx context.Context, path string, payload any, out any
 	if err != nil {
 		return fmt.Errorf("call %s endpoint: %w", operation, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return readStatusError(operation, resp)
@@ -232,7 +232,7 @@ func (c *HTTPClient) get(ctx context.Context, path string, values url.Values, ou
 	if err != nil {
 		return fmt.Errorf("call %s endpoint: %w", operation, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return readStatusError(operation, resp)

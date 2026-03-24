@@ -40,7 +40,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	system := handlers.NewSystemHandler(func(ctx context.Context) error {
 		return bootstrap.Ready(ctx, deps)
 	}, version.Current())
-	trustLab := handlers.NewTrustLabHandler(deps.Scenarios, deps.Trust, deps.Replay, deps.Benchmark, handlers.TrustLabState{
+	trustLab := handlers.NewTrustLabHandler(deps.Scenarios, deps.Execution, deps.Trust, deps.Replay, deps.Benchmark, deps.Commerce, deps.Events, deps.TrustFlow, handlers.TrustLabState{
 		AppEnv:          cfg.AppEnv,
 		ControlPlaneURL: cfg.ControlPlaneURL,
 		ClawMemBaseURL:  cfg.ClawMemBaseURL,

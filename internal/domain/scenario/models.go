@@ -5,9 +5,11 @@ import "time"
 type ScenarioType string
 
 const (
-	ScenarioTypeMandateReview ScenarioType = "mandate_review"
-	ScenarioTypePolicyDrift   ScenarioType = "policy_drift"
-	ScenarioTypeReplayCheck   ScenarioType = "replay_check"
+	ScenarioTypeMandateReview        ScenarioType = "mandate_review"
+	ScenarioTypePolicyDrift          ScenarioType = "policy_drift"
+	ScenarioTypeReplayCheck          ScenarioType = "replay_check"
+	ScenarioTypeCommercePurchase     ScenarioType = "commerce_purchase"
+	ScenarioTypeCommerceRefundReview ScenarioType = "commerce_refund_review"
 )
 
 type Scenario struct {
@@ -38,5 +40,7 @@ func KnownTypes() []ScenarioType {
 		ScenarioTypeMandateReview,
 		ScenarioTypePolicyDrift,
 		ScenarioTypeReplayCheck,
+		ScenarioTypeCommercePurchase,
+		ScenarioTypeCommerceRefundReview,
 	}
 }
