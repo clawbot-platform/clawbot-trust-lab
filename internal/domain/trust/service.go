@@ -2,6 +2,7 @@ package trust
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -29,6 +30,18 @@ type CreateArtifactInput struct {
 	ScenarioID string `json:"scenario_id"`
 }
 
+type MemorySyncError struct {
+	Err error
+}
+
+func (e *MemorySyncError) Error() string {
+	return "clawmem trust artifact write failed: " + e.Err.Error()
+}
+
+func (e *MemorySyncError) Unwrap() error {
+	return e.Err
+}
+
 func NewService(scenarios ScenarioLookup, artifactStore ArtifactStore, memoryClient memory.Client) *Service {
 	return &Service{scenarios: scenarios, store: artifactStore, memory: memoryClient}
 }
@@ -45,7 +58,7 @@ func (s *Service) CreateArtifact(ctx context.Context, input CreateArtifactInput)
 
 	artifact := TrustArtifact{
 		ID:               "ta-" + item.ID,
-		ArtifactFamily:   "trust",
+		ArtifactFamily:   deriveArtifactFamily(item),
 		ArtifactType:     deriveArtifactType(item),
 		SourceScenarioID: item.ID,
 		Summary:          "Trust artifact created for scenario " + item.Name,
@@ -77,15 +90,18 @@ func (s *Service) CreateArtifact(ctx context.Context, input CreateArtifactInput)
 		}
 	}
 
-	if err := s.store.Create(artifact); err != nil {
-		return TrustArtifact{}, err
-	}
 	if err := s.memory.StoreTrustArtifact(ctx, memory.StoreTrustArtifactRequest{
-		ArtifactID: artifact.ID,
-		ScenarioID: artifact.SourceScenarioID,
-		Summary:    artifact.Summary,
-		Metadata:   artifact.Metadata,
+		ArtifactID:     artifact.ID,
+		ScenarioID:     artifact.SourceScenarioID,
+		Summary:        artifact.Summary,
+		ArtifactFamily: artifact.ArtifactFamily,
+		ArtifactType:   artifact.ArtifactType,
+		Metadata:       artifact.Metadata,
+		Tags:           append([]string{"trust-artifact", string(item.Type)}, item.Tags...),
 	}); err != nil {
+		return TrustArtifact{}, &MemorySyncError{Err: err}
+	}
+	if err := s.store.Create(artifact); err != nil {
 		return TrustArtifact{}, err
 	}
 
@@ -96,9 +112,23 @@ func (s *Service) ListArtifacts() []TrustArtifact {
 	return s.store.List()
 }
 
+func (s *Service) LoadMemoryContext(ctx context.Context, scenarioID string) (memory.LoadScenarioContextResponse, error) {
+	if strings.TrimSpace(scenarioID) == "" {
+		return memory.LoadScenarioContextResponse{}, errors.New("scenario_id is required")
+	}
+	return s.memory.LoadScenarioContext(ctx, memory.LoadScenarioContextRequest{ScenarioID: scenarioID})
+}
+
 func deriveArtifactType(item scenario.Scenario) string {
 	if item.Type == scenario.ScenarioTypeMandateReview {
 		return "mandate_artifact"
 	}
 	return "provenance_artifact"
+}
+
+func deriveArtifactFamily(item scenario.Scenario) string {
+	if item.Type == scenario.ScenarioTypeMandateReview {
+		return "mandate"
+	}
+	return "provenance"
 }

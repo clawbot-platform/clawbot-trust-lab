@@ -1,6 +1,6 @@
 # API
 
-Phase 3 exposes real trust-lab behavior in addition to the Phase 2 shell endpoints.
+Phase 4.1 keeps the Phase 3 API surface and upgrades the memory path to use the live `clawmem` service.
 
 ## System
 
@@ -20,6 +20,10 @@ Phase 3 exposes real trust-lab behavior in addition to the Phase 2 shell endpoin
 - `GET /api/v1/trust/artifacts`
 - `GET /api/v1/trust/status`
 
+`POST /api/v1/trust/artifacts` now requires a successful `clawmem` write. If `clawmem` is unavailable, the endpoint returns `502 Bad Gateway`.
+
+`GET /api/v1/trust/status` accepts an optional `scenario_id` query parameter. When present, the handler attempts to load `clawmem` scenario context and includes either `memory_status=ok` plus `memory_context`, or `memory_status=degraded` plus `memory_error`.
+
 Example:
 
 ```json
@@ -33,6 +37,10 @@ Example:
 - `POST /api/v1/replay/cases`
 - `GET /api/v1/replay/cases`
 - `GET /api/v1/replay/status`
+
+`POST /api/v1/replay/cases` now requires a successful `clawmem` write. If `clawmem` is unavailable, the endpoint returns `502 Bad Gateway`.
+
+`GET /api/v1/replay/status` accepts an optional `scenario_id` query parameter. When present, the handler attempts to load replay memory context from `clawmem` and includes either `memory_status=ok` plus `similar_cases`, or `memory_status=degraded` plus `memory_error`.
 
 Example:
 
@@ -73,3 +81,9 @@ Example:
   "notes": "Phase 3 benchmark registration slice"
 }
 ```
+
+## Startup order
+
+1. `clawbot-server`
+2. `clawmem`
+3. `clawbot-trust-lab`

@@ -43,7 +43,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	trustLab := handlers.NewTrustLabHandler(deps.Scenarios, deps.Trust, deps.Replay, deps.Benchmark, handlers.TrustLabState{
 		AppEnv:          cfg.AppEnv,
 		ControlPlaneURL: cfg.ControlPlaneURL,
-		MemoryURL:       cfg.MemoryURL,
+		ClawMemBaseURL:  cfg.ClawMemBaseURL,
 	})
 
 	server := &http.Server{

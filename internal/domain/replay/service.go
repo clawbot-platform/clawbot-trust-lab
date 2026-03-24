@@ -1,13 +1,17 @@
 package replay
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
+
+	"clawbot-trust-lab/internal/clients/memory"
 )
 
 type Service struct {
-	store ArchiveStore
+	store  ArchiveStore
+	memory memory.Client
 }
 
 type ArchiveStore interface {
@@ -24,11 +28,23 @@ type CreateCaseInput struct {
 	PromotionReason         string   `json:"promotion_reason"`
 }
 
-func NewService(replayStore ArchiveStore) *Service {
-	return &Service{store: replayStore}
+type MemorySyncError struct {
+	Err error
 }
 
-func (s *Service) CreateCase(input CreateCaseInput) (ReplayCase, error) {
+func (e *MemorySyncError) Error() string {
+	return "clawmem replay write failed: " + e.Err.Error()
+}
+
+func (e *MemorySyncError) Unwrap() error {
+	return e.Err
+}
+
+func NewService(replayStore ArchiveStore, memoryClient memory.Client) *Service {
+	return &Service{store: replayStore, memory: memoryClient}
+}
+
+func (s *Service) CreateCase(ctx context.Context, input CreateCaseInput) (ReplayCase, error) {
 	if strings.TrimSpace(input.ScenarioID) == "" {
 		return ReplayCase{}, fmt.Errorf("scenario_id is required")
 	}
@@ -55,9 +71,28 @@ func (s *Service) CreateCase(input CreateCaseInput) (ReplayCase, error) {
 	}
 	item.ArchiveRef.Key = item.ID + ".json"
 
+	if err := s.memory.StoreReplayCase(ctx, memory.StoreReplayCaseRequest{
+		ReplayCaseID: item.ID,
+		ScenarioID:   item.ScenarioID,
+		Summary:      item.OutcomeSummary,
+		Metadata: map[string]any{
+			"benchmark_round_ref": item.BenchmarkRoundRef,
+			"archive_ref":         item.ArchiveRef,
+			"promotion":           item.Promotion,
+			"trust_artifact_refs": item.TrustArtifactRefs,
+		},
+		Tags: []string{"replay-case", item.Promotion.Status},
+	}); err != nil {
+		return ReplayCase{}, &MemorySyncError{Err: err}
+	}
+
 	return s.store.Create(item)
 }
 
 func (s *Service) ListCases() []ReplayCase {
 	return s.store.List()
+}
+
+func (s *Service) SimilarCases(ctx context.Context, scenarioID string) (memory.FetchSimilarCasesResponse, error) {
+	return s.memory.FetchSimilarCases(ctx, memory.FetchSimilarCasesRequest{ScenarioID: strings.TrimSpace(scenarioID)})
 }

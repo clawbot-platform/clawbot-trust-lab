@@ -2,8 +2,11 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"strings"
 
+	"clawbot-trust-lab/internal/clients/memory"
 	"clawbot-trust-lab/internal/domain/benchmark"
 	"clawbot-trust-lab/internal/domain/replay"
 	"clawbot-trust-lab/internal/domain/scenario"
@@ -18,11 +21,13 @@ type ScenarioService interface {
 type TrustService interface {
 	CreateArtifact(context.Context, trust.CreateArtifactInput) (trust.TrustArtifact, error)
 	ListArtifacts() []trust.TrustArtifact
+	LoadMemoryContext(context.Context, string) (memory.LoadScenarioContextResponse, error)
 }
 
 type ReplayService interface {
-	CreateCase(replay.CreateCaseInput) (replay.ReplayCase, error)
+	CreateCase(context.Context, replay.CreateCaseInput) (replay.ReplayCase, error)
 	ListCases() []replay.ReplayCase
+	SimilarCases(context.Context, string) (memory.FetchSimilarCasesResponse, error)
 }
 
 type BenchmarkService interface {
@@ -33,7 +38,7 @@ type BenchmarkService interface {
 type TrustLabState struct {
 	AppEnv          string
 	ControlPlaneURL string
-	MemoryURL       string
+	ClawMemBaseURL  string
 }
 
 type TrustLabHandler struct {
@@ -75,26 +80,49 @@ func (h *TrustLabHandler) GetPack(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"data": pack})
 }
 
-func (h *TrustLabHandler) ReplayStatus(w http.ResponseWriter, _ *http.Request) {
+func (h *TrustLabHandler) ReplayStatus(w http.ResponseWriter, r *http.Request) {
+	data := map[string]any{
+		"status":         "active",
+		"memory_backend": "clawmem_http",
+		"replay_cases":   len(h.replay.ListCases()),
+		"phase":          "Phase 4.1",
+	}
+	if scenarioID := strings.TrimSpace(r.URL.Query().Get("scenario_id")); scenarioID != "" {
+		response, err := h.replay.SimilarCases(r.Context(), scenarioID)
+		if err != nil {
+			data["memory_status"] = "degraded"
+			data["memory_error"] = err.Error()
+		} else {
+			data["memory_status"] = "ok"
+			data["similar_cases"] = response.Cases
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"data": map[string]any{
-			"status":        "active",
-			"memory_client": "defined",
-			"replay_cases":  len(h.replay.ListCases()),
-			"phase":         "Phase 3",
-		},
+		"data": data,
 	})
 }
 
-func (h *TrustLabHandler) TrustStatus(w http.ResponseWriter, _ *http.Request) {
+func (h *TrustLabHandler) TrustStatus(w http.ResponseWriter, r *http.Request) {
+	data := map[string]any{
+		"status":            "active",
+		"control_plane_url": h.state.ControlPlaneURL,
+		"clawmem_base_url":  h.state.ClawMemBaseURL,
+		"memory_backend":    "clawmem_http",
+		"artifact_count":    len(h.trust.ListArtifacts()),
+		"artifact_families": []string{"trust_artifact", "mandate_artifact", "provenance_artifact"},
+	}
+	if scenarioID := strings.TrimSpace(r.URL.Query().Get("scenario_id")); scenarioID != "" {
+		response, err := h.trust.LoadMemoryContext(r.Context(), scenarioID)
+		if err != nil {
+			data["memory_status"] = "degraded"
+			data["memory_error"] = err.Error()
+		} else {
+			data["memory_status"] = "ok"
+			data["memory_context"] = response.Context
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"data": map[string]any{
-			"status":            "active",
-			"control_plane_url": h.state.ControlPlaneURL,
-			"memory_contract":   "defined",
-			"artifact_count":    len(h.trust.ListArtifacts()),
-			"artifact_families": []string{"trust_artifact", "mandate_artifact", "provenance_artifact"},
-		},
+		"data": data,
 	})
 }
 
@@ -112,6 +140,11 @@ func (h *TrustLabHandler) CreateArtifact(w http.ResponseWriter, r *http.Request)
 	}
 	artifact, err := h.trust.CreateArtifact(r.Context(), input)
 	if err != nil {
+		var memoryErr *trust.MemorySyncError
+		if errors.As(err, &memoryErr) || memory.IsDependencyFailure(err) {
+			writeError(w, http.StatusBadGateway, err.Error())
+			return
+		}
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -128,8 +161,13 @@ func (h *TrustLabHandler) CreateReplayCase(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	item, err := h.replay.CreateCase(input)
+	item, err := h.replay.CreateCase(r.Context(), input)
 	if err != nil {
+		var memoryErr *replay.MemorySyncError
+		if errors.As(err, &memoryErr) || memory.IsDependencyFailure(err) {
+			writeError(w, http.StatusBadGateway, err.Error())
+			return
+		}
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}

@@ -26,7 +26,7 @@ type Dependencies struct {
 
 func Build(cfg config.Config) (Dependencies, error) {
 	controlPlaneClient := controlplane.New(cfg.ControlPlaneURL, cfg.ControlPlaneTimeout)
-	memoryClient := memory.NewStub(cfg.MemoryURL)
+	memoryClient := memory.New(cfg.ClawMemBaseURL, cfg.ClawMemTimeout)
 	scenarioLoader := loader.New(cfg.ScenarioPacksDir)
 	scenarioService, err := scenario.NewService(scenarioLoader)
 	if err != nil {
@@ -42,7 +42,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 		Memory:       memoryClient,
 		Scenarios:    scenarioService,
 		Trust:        trust.NewService(scenarioService, store.NewInMemoryTrustArtifactStore(), memoryClient),
-		Replay:       replay.NewService(replayStore),
+		Replay:       replay.NewService(replayStore, memoryClient),
 		Benchmark:    benchmark.NewService(controlPlaneClient),
 	}, nil
 }
@@ -50,6 +50,9 @@ func Build(cfg config.Config) (Dependencies, error) {
 func Ready(ctx context.Context, deps Dependencies) error {
 	if err := deps.ControlPlane.Health(ctx); err != nil {
 		return fmt.Errorf("control-plane health check failed: %w", err)
+	}
+	if err := deps.Memory.Health(ctx); err != nil {
+		return fmt.Errorf("clawmem health check failed: %w", err)
 	}
 	return nil
 }

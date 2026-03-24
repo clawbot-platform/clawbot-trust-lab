@@ -3,10 +3,11 @@
 ## Local workflow
 
 1. Copy `.env.example` to `.env`.
-2. Start `clawbot-server` separately if you want `/readyz` to pass against the control-plane health check.
-3. Run `go run ./cmd/trust-lab` or `make run`.
-4. Use `go test ./...` or `make test` for validation.
-5. Scenario packs are loaded from `configs/scenario-packs/`.
+2. Start `clawbot-server` so `/readyz` can pass the control-plane health check.
+3. Start `clawmem` so trust and replay creation can persist memory records.
+4. Run `go run ./cmd/trust-lab` or `make run`.
+5. Use `go test ./...` or `make test` for validation.
+6. Scenario packs are loaded from `configs/scenario-packs/`.
 
 ## Commands
 
@@ -15,3 +16,10 @@
 - `make lint`
 - `make security`
 - `go run ./cmd/trust-lab`
+
+## Required env
+
+- `CONTROL_PLANE_BASE_URL`
+- `CLAWMEM_BASE_URL`
+
+`CLAWMEM_TIMEOUT` defaults to `5s`. A legacy `MEMORY_BASE_URL` fallback is still accepted for compatibility, but new setup should use `CLAWMEM_BASE_URL`.
