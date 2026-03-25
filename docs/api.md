@@ -1,6 +1,6 @@
 # API
 
-Phase 7 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, the explainable detection baseline, and adds the Red Queen MVP benchmark round loop.
+Phase 8 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, the explainable detection baseline, the Red Queen MVP benchmark loop, and adds operator-facing review APIs.
 
 ## System
 
@@ -175,12 +175,61 @@ Round responses include:
 - detection delta
 - report directory and artifact paths
 
+Phase 8.1 bootstrap note:
+
+- `GET /api/v1/benchmark/rounds` includes both live in-memory rounds and historical rounds reconstructed from `REPORTS_DIR`
+- historical reconstruction requires `reports/<round-id>/round-summary.json`
+- if a round exists both live and persisted, the live round wins and persisted report metadata is preserved
+
 The report API exposes the generated artifacts under `reports/<round-id>/`, including:
 - `round-summary.json`
 - `round-summary.md`
 - `detection-delta.json`
 - `promotion-report.json`
 - `executive-summary.md`
+
+## Operator
+
+- `GET /api/v1/operator/rounds`
+- `GET /api/v1/operator/rounds/{id}`
+- `GET /api/v1/operator/rounds/{id}/compare?previous=<round-id>`
+- `GET /api/v1/operator/promotions`
+- `GET /api/v1/operator/promotions/{id}`
+- `POST /api/v1/operator/promotions/{id}/review`
+- `GET /api/v1/operator/detection/results/{id}`
+- `GET /api/v1/operator/reports/{round_id}`
+- `GET /api/v1/operator/reports/{round_id}/{artifact_name}`
+
+`POST /api/v1/operator/promotions/{id}/review` accepts:
+
+```json
+{
+  "status": "accepted",
+  "note": "Promote this case into the replay baseline."
+}
+```
+
+Allowed review statuses:
+- `accepted`
+- `duplicate`
+- `needs_follow_up`
+- `false_signal`
+
+`GET /api/v1/operator/rounds/{id}/compare` returns deltas for:
+- robustness outcome
+- promotions count
+- replay pass rate
+- challenger count
+- important findings
+- detection delta count
+
+`GET /api/v1/operator/reports/{round_id}/{artifact_name}` returns the artifact descriptor plus report content so the UI can render existing report outputs instead of regenerating them.
+
+Phase 8.1 historical operator behavior:
+
+- `GET /api/v1/operator/rounds` includes bootstrapped historical rounds after restart
+- `GET /api/v1/operator/promotions` includes historical promotions reconstructed from `promotion-report.json` when present
+- promotion review state is only returned when it has actually been stored; the API does not invent historical review values
 
 ## Startup order
 

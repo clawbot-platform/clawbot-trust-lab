@@ -32,7 +32,7 @@ func NewLogger(level string, writer io.Writer) *slog.Logger {
 }
 
 func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
-	deps, err := bootstrap.Build(cfg)
+	deps, err := bootstrap.Build(cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -45,12 +45,14 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		ControlPlaneURL: cfg.ControlPlaneURL,
 		ClawMemBaseURL:  cfg.ClawMemBaseURL,
 	})
+	operator := handlers.NewOperatorHandler(deps.Operator)
 
 	server := &http.Server{
 		Addr: cfg.ServiceAddress,
 		Handler: routes.New(httpmw.RequestLogger(logger), routes.Services{
 			System:   system,
 			TrustLab: trustLab,
+			Operator: operator,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

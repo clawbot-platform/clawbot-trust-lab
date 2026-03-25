@@ -18,6 +18,7 @@ import (
 	"clawbot-trust-lab/internal/domain/scenario"
 	"clawbot-trust-lab/internal/domain/trust"
 	detectionsvc "clawbot-trust-lab/internal/services/detection"
+	operatorsvc "clawbot-trust-lab/internal/services/operator"
 	executionsvc "clawbot-trust-lab/internal/services/scenario"
 	"clawbot-trust-lab/internal/version"
 )
@@ -255,6 +256,119 @@ func (s *detectionServiceStub) Summary() detectionmodel.DetectionRunSummary {
 	return s.summary
 }
 
+type operatorServiceStub struct{}
+
+func (s operatorServiceStub) ListRounds() []benchmark.BenchmarkRound {
+	return []benchmark.BenchmarkRound{{
+		ID:             "round-20260325120000",
+		ScenarioFamily: "commerce",
+		Summary: benchmark.RoundSummary{
+			PromotionCount:    1,
+			ReplayPassRate:    1,
+			RobustnessOutcome: benchmark.RobustnessOutcomeNewBlindSpotDiscovered,
+		},
+	}}
+}
+
+func (s operatorServiceStub) GetRound(id string) (benchmark.BenchmarkRound, error) {
+	if id != "round-20260325120000" {
+		return benchmark.BenchmarkRound{}, errors.New("round not found")
+	}
+	return s.ListRounds()[0], nil
+}
+
+func (s operatorServiceStub) CompareRounds(current string, previous string) (benchmark.RoundComparison, error) {
+	if current == "" || previous == "" {
+		return benchmark.RoundComparison{}, errors.New("missing round id")
+	}
+	return benchmark.RoundComparison{
+		CurrentRoundID:       current,
+		PreviousRoundID:      previous,
+		PromotionsCountDelta: 1,
+	}, nil
+}
+
+func (s operatorServiceStub) ListPromotions(string) []operatorsvc.PromotionRecord {
+	return []operatorsvc.PromotionRecord{{
+		RoundID: "round-20260325120000",
+		Promotion: benchmark.PromotionDecision{
+			ID:                 "promo-1",
+			ScenarioID:         "commerce-challenger-weakened-provenance-purchase",
+			PromotionReason:    benchmark.PromotionReasonDetectorMiss,
+			DetectionResultRef: "det-order-suspicious-refund-attempt",
+		},
+	}}
+}
+
+func (s operatorServiceStub) GetPromotion(id string) (operatorsvc.PromotionDetail, error) {
+	if id != "promo-1" {
+		return operatorsvc.PromotionDetail{}, errors.New("promotion not found")
+	}
+	return operatorsvc.PromotionDetail{
+		RoundID: "round-20260325120000",
+		Promotion: benchmark.PromotionDecision{
+			ID:                 "promo-1",
+			ScenarioID:         "commerce-challenger-weakened-provenance-purchase",
+			PromotionReason:    benchmark.PromotionReasonDetectorMiss,
+			DetectionResultRef: "det-order-suspicious-refund-attempt",
+		},
+		DetectionResult: detectionmodel.DetectionResult{
+			ID:         "det-order-suspicious-refund-attempt",
+			ScenarioID: "commerce-challenger-weakened-provenance-purchase",
+			Status:     detectionmodel.DetectionStatusClean,
+		},
+	}, nil
+}
+
+func (s operatorServiceStub) ReviewPromotion(id string, input operatorsvc.ReviewInput) (benchmark.PromotionReview, error) {
+	if id == "" || input.Status == "" {
+		return benchmark.PromotionReview{}, errors.New("invalid review")
+	}
+	return benchmark.PromotionReview{
+		PromotionID: id,
+		Status:      benchmark.PromotionReviewStatus(input.Status),
+		UpdatedAt:   time.Now().UTC(),
+	}, nil
+}
+
+func (s operatorServiceStub) GetDetectionResult(id string) (detectionmodel.DetectionResult, error) {
+	if id != "det-order-suspicious-refund-attempt" {
+		return detectionmodel.DetectionResult{}, errors.New("detection result not found")
+	}
+	return detectionmodel.DetectionResult{
+		ID:         id,
+		ScenarioID: "commerce-challenger-weakened-provenance-purchase",
+		Status:     detectionmodel.DetectionStatusClean,
+	}, nil
+}
+
+func (s operatorServiceStub) GetReports(roundID string) ([]benchmark.ReportDescriptor, error) {
+	if roundID != "round-20260325120000" {
+		return nil, errors.New("round not found")
+	}
+	return []benchmark.ReportDescriptor{{
+		RoundID:      roundID,
+		ArtifactName: "executive-summary.md",
+		Path:         "./reports/round-20260325120000/executive-summary.md",
+		Kind:         "markdown",
+	}}, nil
+}
+
+func (s operatorServiceStub) GetReportArtifact(roundID string, artifactName string) (operatorsvc.ReportContent, error) {
+	if roundID != "round-20260325120000" || artifactName != "executive-summary.md" {
+		return operatorsvc.ReportContent{}, errors.New("report artifact not found")
+	}
+	return operatorsvc.ReportContent{
+		Descriptor: benchmark.ReportDescriptor{
+			RoundID:      roundID,
+			ArtifactName: artifactName,
+			Path:         "./reports/round-20260325120000/executive-summary.md",
+			Kind:         "markdown",
+		},
+		Content: "# Executive Summary",
+	}, nil
+}
+
 func TestSystemHandlerHealth(t *testing.T) {
 	handler := NewSystemHandler(func(context.Context) error { return nil }, version.Current())
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -450,6 +564,51 @@ func TestTrustLabHandlerDetectionSummary(t *testing.T) {
 	}
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"total":1`)) {
 		t.Fatalf("expected total in body: %s", recorder.Body.String())
+	}
+}
+
+func TestOperatorHandlerListRounds(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/operator/rounds", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ListRounds(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestOperatorHandlerReviewPromotion(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/operator/promotions/promo-1/review", bytes.NewBufferString(`{"status":"accepted","note":"Looks real."}`))
+	req.SetPathValue("id", "promo-1")
+	recorder := httptest.NewRecorder()
+
+	handler.ReviewPromotion(recorder, req)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"status":"accepted"`)) {
+		t.Fatalf("expected review status in body: %s", recorder.Body.String())
+	}
+}
+
+func TestOperatorHandlerGetReportArtifact(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/operator/reports/round-20260325120000/executive-summary.md", nil)
+	req.SetPathValue("round_id", "round-20260325120000")
+	req.SetPathValue("artifact_name", "executive-summary.md")
+	recorder := httptest.NewRecorder()
+
+	handler.GetReportArtifact(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"# Executive Summary"`)) {
+		t.Fatalf("expected report content in body: %s", recorder.Body.String())
 	}
 }
 

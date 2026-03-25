@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"clawbot-trust-lab/internal/clients/controlplane"
 	"clawbot-trust-lab/internal/clients/memory"
@@ -17,6 +18,7 @@ import (
 	servicecommerce "clawbot-trust-lab/internal/services/commerce"
 	servicedetection "clawbot-trust-lab/internal/services/detection"
 	serviceevents "clawbot-trust-lab/internal/services/events"
+	serviceoperator "clawbot-trust-lab/internal/services/operator"
 	servicereporting "clawbot-trust-lab/internal/services/reporting"
 	servicescenario "clawbot-trust-lab/internal/services/scenario"
 	servicetrust "clawbot-trust-lab/internal/services/trust"
@@ -34,9 +36,10 @@ type Dependencies struct {
 	TrustFlow    *servicetrust.Service
 	Execution    *servicescenario.Service
 	Detection    *servicedetection.Service
+	Operator     *serviceoperator.Service
 }
 
-func Build(cfg config.Config) (Dependencies, error) {
+func Build(cfg config.Config, logger *slog.Logger) (Dependencies, error) {
 	controlPlaneClient := controlplane.New(cfg.ControlPlaneURL, cfg.ControlPlaneTimeout)
 	memoryClient := memory.New(cfg.ClawMemBaseURL, cfg.ClawMemTimeout)
 	scenarioLoader := loader.New(cfg.ScenarioPacksDir)
@@ -51,6 +54,17 @@ func Build(cfg config.Config) (Dependencies, error) {
 	worldStore := store.NewCommerceWorldStore()
 	detectionStore := store.NewDetectionStore()
 	benchmarkStore := store.NewBenchmarkStore()
+	operatorStore := store.NewOperatorStore()
+	historicalState := LoadHistoricalState(cfg.ReportsDir, logger)
+	for _, round := range historicalState.Rounds {
+		benchmarkStore.PutHistorical(round)
+	}
+	for _, item := range historicalState.DetectionResults {
+		detectionStore.Put(item)
+	}
+	if logger != nil && len(historicalState.Rounds) > 0 {
+		logger.Info("bootstrapped historical benchmark rounds from reports", "round_count", len(historicalState.Rounds), "reports_dir", cfg.ReportsDir)
+	}
 	commerceService := servicecommerce.NewService(worldStore)
 	eventService := serviceevents.NewService(worldStore)
 	trustFlowService := servicetrust.NewService(worldStore)
@@ -61,6 +75,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 	reportingService := servicereporting.NewService(cfg.ReportsDir)
 	benchmarkRegistrationService := benchmark.NewService(controlPlaneClient)
 	benchmarkRoundService := servicebenchmark.NewService(benchmarkRegistrationService, executionService, detectionService, replayService, benchmarkStore, reportingService)
+	operatorService := serviceoperator.NewService(benchmarkRoundService, detectionService, operatorStore)
 
 	return Dependencies{
 		ControlPlane: controlPlaneClient,
@@ -74,6 +89,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 		TrustFlow:    trustFlowService,
 		Execution:    executionService,
 		Detection:    detectionService,
+		Operator:     operatorService,
 	}, nil
 }
 

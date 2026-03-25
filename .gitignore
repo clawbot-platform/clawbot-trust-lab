@@ -8,3 +8,10 @@ bin/
 coverage.out
 reports/*
 !reports/.gitkeep
+web/node_modules/
+web/dist/
+web/playwright-report/
+web/test-results/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts

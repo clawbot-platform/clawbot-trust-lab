@@ -190,6 +190,28 @@ func TestRunRoundReportsEndpointDataIsStored(t *testing.T) {
 	}
 }
 
+func TestListRoundsIncludesHistoricalRoundsAfterBootstrap(t *testing.T) {
+	store := store.NewBenchmarkStore()
+	store.PutHistorical(domainbenchmark.BenchmarkRound{
+		ID:          "round-20260324120000",
+		CompletedAt: time.Date(2026, 3, 24, 12, 0, 0, 0, time.UTC),
+		Summary:     domainbenchmark.RoundSummary{RoundID: "round-20260324120000", ScenarioFamily: "commerce"},
+		Reports: domainbenchmark.ReportIndex{
+			RoundID:   "round-20260324120000",
+			Directory: filepath.Join(t.TempDir(), "round-20260324120000"),
+		},
+	})
+
+	service := NewService(registrarStub{}, nil, nil, nil, store, nil)
+	items := service.ListRounds()
+	if len(items) != 1 {
+		t.Fatalf("expected 1 historical round, got %d", len(items))
+	}
+	if items[0].ID != "round-20260324120000" {
+		t.Fatalf("unexpected historical round %#v", items[0])
+	}
+}
+
 func TestWeakenedProvenanceVariantPromotesOnDetectorMiss(t *testing.T) {
 	service := newRoundService(t)
 

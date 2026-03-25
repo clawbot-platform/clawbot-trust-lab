@@ -160,6 +160,13 @@ type ReportIndex struct {
 	Artifacts []ReportArtifact `json:"artifacts"`
 }
 
+type ReportDescriptor struct {
+	RoundID      string `json:"round_id"`
+	ArtifactName string `json:"artifact_name"`
+	Path         string `json:"path"`
+	Kind         string `json:"kind"`
+}
+
 type RoundSummary struct {
 	RoundID             string            `json:"round_id"`
 	ScenarioFamily      string            `json:"scenario_family"`
@@ -190,4 +197,39 @@ type BenchmarkRound struct {
 	LivingSet             LivingSetResult     `json:"living_set"`
 	Summary               RoundSummary        `json:"summary"`
 	Reports               ReportIndex         `json:"reports"`
+}
+
+type PromotionReviewStatus string
+
+const (
+	PromotionReviewAccepted      PromotionReviewStatus = "accepted"
+	PromotionReviewDuplicate     PromotionReviewStatus = "duplicate"
+	PromotionReviewNeedsFollowUp PromotionReviewStatus = "needs_follow_up"
+	PromotionReviewFalseSignal   PromotionReviewStatus = "false_signal"
+)
+
+type OperatorNote struct {
+	ID        string    `json:"id"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type PromotionReview struct {
+	PromotionID string                `json:"promotion_id"`
+	Status      PromotionReviewStatus `json:"status"`
+	Note        *OperatorNote         `json:"note,omitempty"`
+	UpdatedAt   time.Time             `json:"updated_at"`
+}
+
+type RoundComparison struct {
+	CurrentRoundID          string            `json:"current_round_id"`
+	PreviousRoundID         string            `json:"previous_round_id"`
+	CurrentRobustness       RobustnessOutcome `json:"current_robustness"`
+	PreviousRobustness      RobustnessOutcome `json:"previous_robustness"`
+	PromotionsCountDelta    int               `json:"promotions_count_delta"`
+	ReplayPassRateDelta     float64           `json:"replay_pass_rate_delta"`
+	ChallengerCountDelta    int               `json:"challenger_count_delta"`
+	ImportantFindingsAdded  []string          `json:"important_findings_added"`
+	ImportantFindingsClosed []string          `json:"important_findings_closed"`
+	DetectionDeltaCount     int               `json:"detection_delta_count"`
 }

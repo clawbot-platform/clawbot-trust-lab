@@ -9,6 +9,7 @@ import (
 type Services struct {
 	System   *handlers.SystemHandler
 	TrustLab *handlers.TrustLabHandler
+	Operator *handlers.OperatorHandler
 }
 
 func New(loggerMiddleware func(http.Handler) http.Handler, services Services) http.Handler {
@@ -65,6 +66,15 @@ func New(loggerMiddleware func(http.Handler) http.Handler, services Services) ht
 	mux.HandleFunc("/api/v1/trust/decisions/{id}", services.TrustLab.GetTrustDecision)
 	mux.HandleFunc("/api/v1/benchmark/rounds/register", services.TrustLab.RegisterBenchmarkRound)
 	mux.HandleFunc("/api/v1/benchmark/rounds/status", services.TrustLab.BenchmarkRoundStatus)
+	mux.HandleFunc("/api/v1/operator/rounds", services.Operator.ListRounds)
+	mux.HandleFunc("/api/v1/operator/rounds/{id}", services.Operator.GetRound)
+	mux.HandleFunc("/api/v1/operator/rounds/{id}/compare", services.Operator.CompareRounds)
+	mux.HandleFunc("/api/v1/operator/promotions", services.Operator.ListPromotions)
+	mux.HandleFunc("/api/v1/operator/promotions/{id}", services.Operator.GetPromotion)
+	mux.HandleFunc("/api/v1/operator/promotions/{id}/review", services.Operator.ReviewPromotion)
+	mux.HandleFunc("/api/v1/operator/detection/results/{id}", services.Operator.GetDetectionResult)
+	mux.HandleFunc("/api/v1/operator/reports/{round_id}", services.Operator.GetReports)
+	mux.HandleFunc("/api/v1/operator/reports/{round_id}/{artifact_name}", services.Operator.GetReportArtifact)
 
 	return loggerMiddleware(mux)
 }
