@@ -54,6 +54,13 @@ func New(loggerMiddleware func(http.Handler) http.Handler, services Services) ht
 		}
 	})
 	mux.HandleFunc("/api/v1/benchmark/status", services.TrustLab.BenchmarkStatus)
+	mux.HandleFunc("/api/v1/benchmark/rounds", services.TrustLab.ListBenchmarkRounds)
+	mux.HandleFunc("/api/v1/benchmark/rounds/run", services.TrustLab.RunBenchmarkRound)
+	mux.HandleFunc("/api/v1/benchmark/rounds/{id}", services.TrustLab.GetBenchmarkRound)
+	mux.HandleFunc("/api/v1/benchmark/rounds/{id}/summary", services.TrustLab.GetBenchmarkRoundSummary)
+	mux.HandleFunc("/api/v1/benchmark/rounds/{id}/promotions", services.TrustLab.GetBenchmarkRoundPromotions)
+	mux.HandleFunc("/api/v1/benchmark/rounds/{id}/delta", services.TrustLab.GetBenchmarkRoundDelta)
+	mux.HandleFunc("/api/v1/benchmark/rounds/{id}/reports", services.TrustLab.GetBenchmarkRoundReports)
 	mux.HandleFunc("/api/v1/trust/decisions", services.TrustLab.ListTrustDecisions)
 	mux.HandleFunc("/api/v1/trust/decisions/{id}", services.TrustLab.GetTrustDecision)
 	mux.HandleFunc("/api/v1/benchmark/rounds/register", services.TrustLab.RegisterBenchmarkRound)

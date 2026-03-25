@@ -97,6 +97,77 @@ type benchmarkServiceStub struct{}
 func (benchmarkServiceStub) RegisterRound(_ context.Context, _ benchmark.RegistrationRequest) (benchmark.RegistrationResult, error) {
 	return benchmark.RegistrationResult{RegistrationID: "bench-1", Status: "accepted_stub", RegisteredAt: time.Now().UTC()}, nil
 }
+func (benchmarkServiceStub) RunRound(_ context.Context, _ benchmark.RunInput) (benchmark.BenchmarkRound, error) {
+	return benchmark.BenchmarkRound{
+		ID:             "round-20260325120000",
+		ScenarioFamily: "commerce",
+		RoundStatus:    benchmark.RoundStatusCompleted,
+		StableSet:      benchmark.StableSetResult{TotalCount: 2, PassedCount: 2},
+		LivingSet:      benchmark.LivingSetResult{TotalCount: 3, CaughtCount: 2, PromotionCount: 1},
+		PromotionResults: []benchmark.PromotionDecision{{
+			ID:                  "promo-1",
+			ScenarioID:          "commerce-challenger-weakened-provenance-purchase",
+			ChallengerVariantID: "variant-weakened-provenance",
+			PromotionReason:     benchmark.PromotionReasonDetectorMiss,
+			Rationale:           "Suspicious challenger behavior evaluated as clean.",
+			Promoted:            true,
+		}},
+		Summary: benchmark.RoundSummary{
+			RoundID:             "round-20260325120000",
+			ScenarioFamily:      "commerce",
+			StableScenarioCount: 2,
+			ChallengerCount:     3,
+			ReplayRetestCount:   0,
+			PromotionCount:      1,
+			ReplayPassRate:      1,
+			RobustnessOutcome:   benchmark.RobustnessOutcomeNewBlindSpotDiscovered,
+		},
+		Reports: benchmark.ReportIndex{
+			RoundID:   "round-20260325120000",
+			Directory: "./reports/round-20260325120000",
+			Artifacts: []benchmark.ReportArtifact{{Name: "round-summary.json", Path: "./reports/round-20260325120000/round-summary.json", Kind: "json"}},
+		},
+	}, nil
+}
+func (benchmarkServiceStub) ListRounds() []benchmark.BenchmarkRound {
+	items, _ := benchmarkServiceStub{}.RunRound(context.Background(), benchmark.RunInput{ScenarioFamily: "commerce"})
+	return []benchmark.BenchmarkRound{items}
+}
+func (benchmarkServiceStub) GetRound(id string) (benchmark.BenchmarkRound, error) {
+	item, _ := benchmarkServiceStub{}.RunRound(context.Background(), benchmark.RunInput{ScenarioFamily: "commerce"})
+	if item.ID != id {
+		return benchmark.BenchmarkRound{}, errors.New("benchmark round not found")
+	}
+	return item, nil
+}
+func (benchmarkServiceStub) GetRoundSummary(id string) (benchmark.RoundSummary, error) {
+	item, err := benchmarkServiceStub{}.GetRound(id)
+	if err != nil {
+		return benchmark.RoundSummary{}, err
+	}
+	return item.Summary, nil
+}
+func (benchmarkServiceStub) GetRoundPromotions(id string) ([]benchmark.PromotionDecision, error) {
+	item, err := benchmarkServiceStub{}.GetRound(id)
+	if err != nil {
+		return nil, err
+	}
+	return item.PromotionResults, nil
+}
+func (benchmarkServiceStub) GetRoundDelta(id string) ([]benchmark.DetectionDelta, error) {
+	_, err := benchmarkServiceStub{}.GetRound(id)
+	if err != nil {
+		return nil, err
+	}
+	return []benchmark.DetectionDelta{{ScenarioID: "commerce-challenger-weakened-provenance-purchase"}}, nil
+}
+func (benchmarkServiceStub) GetRoundReports(id string) (benchmark.ReportIndex, error) {
+	item, err := benchmarkServiceStub{}.GetRound(id)
+	if err != nil {
+		return benchmark.ReportIndex{}, err
+	}
+	return item.Reports, nil
+}
 func (benchmarkServiceStub) Status() map[string]any {
 	return map[string]any{"registrations": 1, "last_status": "accepted_stub"}
 }
@@ -306,6 +377,37 @@ func TestTrustLabHandlerRegisterBenchmarkRound(t *testing.T) {
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", recorder.Code)
+	}
+}
+
+func TestTrustLabHandlerRunBenchmarkRound(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/benchmark/rounds/run", bytes.NewBufferString(`{"scenario_family":"commerce"}`))
+	recorder := httptest.NewRecorder()
+
+	handler.RunBenchmarkRound(recorder, req)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"round_status":"completed"`)) {
+		t.Fatalf("expected round status in body: %s", recorder.Body.String())
+	}
+}
+
+func TestTrustLabHandlerGetBenchmarkRoundReports(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/benchmark/rounds/round-20260325120000/reports", nil)
+	req.SetPathValue("id", "round-20260325120000")
+	recorder := httptest.NewRecorder()
+
+	handler.GetBenchmarkRoundReports(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"round-summary.json"`)) {
+		t.Fatalf("expected report artifact in body: %s", recorder.Body.String())
 	}
 }
 

@@ -102,8 +102,26 @@ func (s *Service) Execute(ctx context.Context, scenarioID string) (ExecutionResu
 			s.storeResult(result)
 		}
 		return result, err
+	case "commerce-challenger-weakened-provenance-purchase":
+		result, err := s.executeWeakenedProvenancePurchase(ctx, item)
+		if err == nil {
+			s.storeResult(result)
+		}
+		return result, err
+	case "commerce-challenger-expired-mandate-purchase":
+		result, err := s.executeExpiredMandatePurchase(ctx, item)
+		if err == nil {
+			s.storeResult(result)
+		}
+		return result, err
+	case "commerce-challenger-approval-removed-refund":
+		result, err := s.executeApprovalRemovedRefund(ctx, item)
+		if err == nil {
+			s.storeResult(result)
+		}
+		return result, err
 	default:
-		return ExecutionResult{}, fmt.Errorf("scenario %s is not executable in Phase 5", item.ID)
+		return ExecutionResult{}, fmt.Errorf("scenario %s is not executable in Phase 7", item.ID)
 	}
 }
 
@@ -359,6 +377,379 @@ func (s *Service) executeSuspiciousRefund(ctx context.Context, item domainscenar
 		OutcomeSummary:          "Refund attempt required step-up because mandate, provenance, and approval coverage were insufficient.",
 		PromotionRecommendation: "hold",
 		PromotionReason:         "Suspicious path should remain available for replay and later detection baselines.",
+		RecordedAt:              decision.RecordedAt.Add(2 * time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	return ExecutionResult{
+		Scenario: item,
+		Entities: EntityRefs{
+			BuyerRefs:         []string{world.buyer.ID},
+			MerchantRefs:      []string{world.merchant.ID},
+			ProductRefs:       []string{world.product.ID},
+			OrderRefs:         []string{order.ID},
+			PaymentRefs:       []string{payment.ID},
+			RefundRefs:        []string{refund.ID},
+			TrustArtifactRefs: []string{artifact.ID},
+		},
+		TrustDecisions: []domaintrust.TrustDecision{decision},
+		ReplayCaseRefs: []string{replayCase.ID},
+		MemoryWrites: []MemoryWriteOutcome{
+			{Kind: "trust_artifact", SourceID: artifact.ID, Status: "written"},
+			{Kind: "replay_case", SourceID: replayCase.ID, Status: "written"},
+		},
+		EventRefs: eventRefs,
+	}, nil
+}
+
+func (s *Service) executeWeakenedProvenancePurchase(ctx context.Context, item domainscenario.Scenario) (ExecutionResult, error) {
+	world := seedWorld()
+	s.seedParticipants(world)
+
+	orderCreatedAt := time.Date(2026, 3, 25, 9, 15, 0, 0, time.UTC)
+	paymentAuthorizedAt := orderCreatedAt.Add(90 * time.Second)
+
+	mandate := s.trust.RecordMandate(domaintrust.Mandate{
+		ID:              "mandate-challenger-weakened-provenance",
+		PrincipalID:     world.principal.PrincipalID,
+		DelegateActorID: world.agent.ID,
+		AllowedActions:  []string{"submit_order"},
+		SpendingLimit:   15000,
+		ExpiresAt:       orderCreatedAt.Add(12 * time.Hour),
+		Status:          "active",
+	})
+	provenance := s.trust.RecordProvenance(domaintrust.ProvenanceRecord{
+		ID:          "prov-challenger-weakened-provenance",
+		ActorID:     world.agent.ID,
+		PrincipalID: world.principal.PrincipalID,
+		SourceType:  "conversation",
+		SourceRef:   "challenger-pack/v1/weakened-provenance",
+		Confidence:  0.19,
+		CreatedAt:   orderCreatedAt.Add(20 * time.Second),
+	})
+
+	order, err := s.commerce.CreateOrder(commerceSvc.CreateOrderInput{
+		ID:                 "order-challenger-weakened-provenance",
+		BuyerID:            world.buyer.ID,
+		MerchantID:         world.merchant.ID,
+		ProductIDs:         []string{world.product.ID},
+		SubmittedByActorID: world.agent.ID,
+		DelegationMode:     world.delegation,
+		MandateRef:         mandate.ID,
+		ProvenanceRef:      provenance.ID,
+		Status:             commerce.OrderStatusAccepted,
+		CreatedAt:          orderCreatedAt,
+		UpdatedAt:          paymentAuthorizedAt,
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	payment := s.commerce.CreatePayment(commerceSvc.CreatePaymentInput{
+		ID:           "payment-challenger-weakened-provenance",
+		OrderID:      order.ID,
+		Amount:       order.TotalAmount,
+		Currency:     order.Currency,
+		Status:       commerce.PaymentStatusAuthorized,
+		Method:       "delegated_card_on_file",
+		AuthorizedAt: paymentAuthorizedAt,
+	})
+
+	decision, err := s.trust.RecordDecision(domaintrust.TrustDecision{
+		ID:             "decision-challenger-weakened-provenance",
+		EntityType:     "order",
+		EntityID:       order.ID,
+		Outcome:        "accepted",
+		ReasonCodes:    []string{"active_mandate", "low_provenance_confidence"},
+		MandateRef:     mandate.ID,
+		ProvenanceRef:  provenance.ID,
+		StepUpRequired: false,
+		RecordedAt:     orderCreatedAt.Add(45 * time.Second),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	eventRefs := []string{
+		s.events.RecordTrust("evt-challenger-weak-order-submitted", domainevents.TrustEventOrderSubmittedByAgent, "order", order.ID, item.ID, world.agent.ID, orderCreatedAt, map[string]any{"delegation_mode": world.delegation}).ID,
+		s.events.RecordTrust("evt-challenger-weak-mandate", domainevents.TrustEventMandateChecked, "mandate", mandate.ID, item.ID, world.agent.ID, orderCreatedAt.Add(10*time.Second), map[string]any{"status": mandate.Status}).ID,
+		s.events.RecordTrust("evt-challenger-weak-provenance", domainevents.TrustEventProvenanceAttached, "provenance_record", provenance.ID, item.ID, world.agent.ID, provenance.CreatedAt, map[string]any{"confidence": provenance.Confidence}).ID,
+		s.events.RecordTransaction("evt-challenger-weak-order-created", domainevents.TransactionEventOrderCreated, "order", order.ID, item.ID, world.agent.ID, orderCreatedAt, map[string]any{"total_amount": order.TotalAmount}).ID,
+		s.events.RecordTransaction("evt-challenger-weak-payment", domainevents.TransactionEventPaymentAuthorized, "payment", payment.ID, item.ID, world.agent.ID, paymentAuthorizedAt, map[string]any{"order_id": order.ID}).ID,
+		s.events.RecordTrust("evt-challenger-weak-decision", domainevents.TrustEventTrustDecisionRecorded, "trust_decision", decision.ID, item.ID, world.agent.ID, decision.RecordedAt, map[string]any{"outcome": decision.Outcome}).ID,
+	}
+
+	artifact, err := s.artifacts.CreateArtifact(ctx, domaintrust.CreateArtifactInput{
+		ScenarioID: item.ID,
+		ArtifactID: "ta-commerce-challenger-weakened-provenance",
+		CreatedAt:  paymentAuthorizedAt.Add(time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	replayCase, err := s.replay.CreateCase(ctx, domainreplay.CreateCaseInput{
+		CaseID:                  "rc-commerce-challenger-weakened-provenance",
+		ScenarioID:              item.ID,
+		TrustArtifactRefs:       []string{artifact.ID},
+		BenchmarkRoundRef:       "phase-7-red-queen",
+		OutcomeSummary:          "Delegated purchase remained accepted even though provenance confidence was materially weak.",
+		PromotionRecommendation: "candidate",
+		PromotionReason:         "Potential blind spot for low-confidence provenance on delegated purchase.",
+		RecordedAt:              paymentAuthorizedAt.Add(2 * time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	return ExecutionResult{
+		Scenario: item,
+		Entities: EntityRefs{
+			BuyerRefs:         []string{world.buyer.ID},
+			MerchantRefs:      []string{world.merchant.ID},
+			ProductRefs:       []string{world.product.ID},
+			OrderRefs:         []string{order.ID},
+			PaymentRefs:       []string{payment.ID},
+			TrustArtifactRefs: []string{artifact.ID},
+		},
+		TrustDecisions: []domaintrust.TrustDecision{decision},
+		ReplayCaseRefs: []string{replayCase.ID},
+		MemoryWrites: []MemoryWriteOutcome{
+			{Kind: "trust_artifact", SourceID: artifact.ID, Status: "written"},
+			{Kind: "replay_case", SourceID: replayCase.ID, Status: "written"},
+		},
+		EventRefs: eventRefs,
+	}, nil
+}
+
+func (s *Service) executeExpiredMandatePurchase(ctx context.Context, item domainscenario.Scenario) (ExecutionResult, error) {
+	world := seedWorld()
+	s.seedParticipants(world)
+
+	orderCreatedAt := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	paymentAuthorizedAt := orderCreatedAt.Add(2 * time.Minute)
+
+	mandate := s.trust.RecordMandate(domaintrust.Mandate{
+		ID:              "mandate-challenger-expired-mandate",
+		PrincipalID:     world.principal.PrincipalID,
+		DelegateActorID: world.agent.ID,
+		AllowedActions:  []string{"submit_order"},
+		SpendingLimit:   15000,
+		ExpiresAt:       orderCreatedAt.Add(-5 * time.Minute),
+		Status:          "expired",
+	})
+	provenance := s.trust.RecordProvenance(domaintrust.ProvenanceRecord{
+		ID:          "prov-challenger-expired-mandate",
+		ActorID:     world.agent.ID,
+		PrincipalID: world.principal.PrincipalID,
+		SourceType:  "conversation",
+		SourceRef:   "challenger-pack/v1/expired-mandate",
+		Confidence:  0.92,
+		CreatedAt:   orderCreatedAt.Add(15 * time.Second),
+	})
+
+	order, err := s.commerce.CreateOrder(commerceSvc.CreateOrderInput{
+		ID:                 "order-challenger-expired-mandate",
+		BuyerID:            world.buyer.ID,
+		MerchantID:         world.merchant.ID,
+		ProductIDs:         []string{world.product.ID},
+		SubmittedByActorID: world.agent.ID,
+		DelegationMode:     world.delegation,
+		MandateRef:         mandate.ID,
+		ProvenanceRef:      provenance.ID,
+		Status:             commerce.OrderStatusAccepted,
+		CreatedAt:          orderCreatedAt,
+		UpdatedAt:          paymentAuthorizedAt,
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	payment := s.commerce.CreatePayment(commerceSvc.CreatePaymentInput{
+		ID:           "payment-challenger-expired-mandate",
+		OrderID:      order.ID,
+		Amount:       order.TotalAmount,
+		Currency:     order.Currency,
+		Status:       commerce.PaymentStatusAuthorized,
+		Method:       "delegated_card_on_file",
+		AuthorizedAt: paymentAuthorizedAt,
+	})
+
+	decision, err := s.trust.RecordDecision(domaintrust.TrustDecision{
+		ID:             "decision-challenger-expired-mandate",
+		EntityType:     "order",
+		EntityID:       order.ID,
+		Outcome:        "review_required",
+		ReasonCodes:    []string{"expired_mandate"},
+		MandateRef:     mandate.ID,
+		ProvenanceRef:  provenance.ID,
+		StepUpRequired: true,
+		RecordedAt:     orderCreatedAt.Add(40 * time.Second),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	eventRefs := []string{
+		s.events.RecordTrust("evt-challenger-expired-order-submitted", domainevents.TrustEventOrderSubmittedByAgent, "order", order.ID, item.ID, world.agent.ID, orderCreatedAt, map[string]any{"delegation_mode": world.delegation}).ID,
+		s.events.RecordTrust("evt-challenger-expired-mandate", domainevents.TrustEventMandateChecked, "mandate", mandate.ID, item.ID, world.agent.ID, orderCreatedAt.Add(10*time.Second), map[string]any{"status": mandate.Status}).ID,
+		s.events.RecordTrust("evt-challenger-expired-provenance", domainevents.TrustEventProvenanceAttached, "provenance_record", provenance.ID, item.ID, world.agent.ID, provenance.CreatedAt, map[string]any{"confidence": provenance.Confidence}).ID,
+		s.events.RecordTransaction("evt-challenger-expired-order-created", domainevents.TransactionEventOrderCreated, "order", order.ID, item.ID, world.agent.ID, orderCreatedAt, map[string]any{"total_amount": order.TotalAmount}).ID,
+		s.events.RecordTransaction("evt-challenger-expired-payment", domainevents.TransactionEventPaymentAuthorized, "payment", payment.ID, item.ID, world.agent.ID, paymentAuthorizedAt, map[string]any{"order_id": order.ID}).ID,
+		s.events.RecordTrust("evt-challenger-expired-decision", domainevents.TrustEventTrustDecisionRecorded, "trust_decision", decision.ID, item.ID, world.agent.ID, decision.RecordedAt, map[string]any{"outcome": decision.Outcome}).ID,
+	}
+
+	artifact, err := s.artifacts.CreateArtifact(ctx, domaintrust.CreateArtifactInput{
+		ScenarioID: item.ID,
+		ArtifactID: "ta-commerce-challenger-expired-mandate",
+		CreatedAt:  paymentAuthorizedAt.Add(time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	replayCase, err := s.replay.CreateCase(ctx, domainreplay.CreateCaseInput{
+		CaseID:                  "rc-commerce-challenger-expired-mandate",
+		ScenarioID:              item.ID,
+		TrustArtifactRefs:       []string{artifact.ID},
+		BenchmarkRoundRef:       "phase-7-red-queen",
+		OutcomeSummary:          "Delegated purchase attempted with expired mandate and required review.",
+		PromotionRecommendation: "review",
+		PromotionReason:         "Expired mandate challenger remains useful for regression tracking.",
+		RecordedAt:              paymentAuthorizedAt.Add(2 * time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	return ExecutionResult{
+		Scenario: item,
+		Entities: EntityRefs{
+			BuyerRefs:         []string{world.buyer.ID},
+			MerchantRefs:      []string{world.merchant.ID},
+			ProductRefs:       []string{world.product.ID},
+			OrderRefs:         []string{order.ID},
+			PaymentRefs:       []string{payment.ID},
+			TrustArtifactRefs: []string{artifact.ID},
+		},
+		TrustDecisions: []domaintrust.TrustDecision{decision},
+		ReplayCaseRefs: []string{replayCase.ID},
+		MemoryWrites: []MemoryWriteOutcome{
+			{Kind: "trust_artifact", SourceID: artifact.ID, Status: "written"},
+			{Kind: "replay_case", SourceID: replayCase.ID, Status: "written"},
+		},
+		EventRefs: eventRefs,
+	}, nil
+}
+
+func (s *Service) executeApprovalRemovedRefund(ctx context.Context, item domainscenario.Scenario) (ExecutionResult, error) {
+	world := seedWorld()
+	s.seedParticipants(world)
+
+	orderCreatedAt := time.Date(2026, 3, 25, 11, 0, 0, 0, time.UTC)
+	refundRequestedAt := orderCreatedAt.Add(6 * time.Minute)
+
+	mandate := s.trust.RecordMandate(domaintrust.Mandate{
+		ID:              "mandate-challenger-approval-removed",
+		PrincipalID:     world.principal.PrincipalID,
+		DelegateActorID: world.agent.ID,
+		AllowedActions:  []string{"submit_order", "request_refund"},
+		SpendingLimit:   15000,
+		ExpiresAt:       orderCreatedAt.Add(6 * time.Hour),
+		Status:          "active",
+	})
+	provenance := s.trust.RecordProvenance(domaintrust.ProvenanceRecord{
+		ID:          "prov-challenger-approval-removed",
+		ActorID:     world.agent.ID,
+		PrincipalID: world.principal.PrincipalID,
+		SourceType:  "conversation",
+		SourceRef:   "challenger-pack/v1/approval-removed-refund",
+		Confidence:  0.74,
+		CreatedAt:   orderCreatedAt.Add(20 * time.Second),
+	})
+
+	order, err := s.commerce.CreateOrder(commerceSvc.CreateOrderInput{
+		ID:                 "order-challenger-approval-removed",
+		BuyerID:            world.buyer.ID,
+		MerchantID:         world.merchant.ID,
+		ProductIDs:         []string{world.product.ID},
+		SubmittedByActorID: world.agent.ID,
+		DelegationMode:     world.delegation,
+		MandateRef:         mandate.ID,
+		ProvenanceRef:      provenance.ID,
+		Status:             commerce.OrderStatusRefundReview,
+		CreatedAt:          orderCreatedAt,
+		UpdatedAt:          refundRequestedAt,
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	payment := s.commerce.CreatePayment(commerceSvc.CreatePaymentInput{
+		ID:           "payment-challenger-approval-removed",
+		OrderID:      order.ID,
+		Amount:       order.TotalAmount,
+		Currency:     order.Currency,
+		Status:       commerce.PaymentStatusAuthorized,
+		Method:       "delegated_card_on_file",
+		AuthorizedAt: orderCreatedAt.Add(time.Minute),
+	})
+
+	refund := s.commerce.CreateRefund(commerceSvc.CreateRefundInput{
+		ID:                 "refund-challenger-approval-removed",
+		OrderID:            order.ID,
+		Amount:             order.TotalAmount,
+		Status:             commerce.RefundStatusRejected,
+		RequestedByActorID: world.agent.ID,
+		Reason:             "Refund requested without any approval evidence",
+		CreatedAt:          refundRequestedAt,
+	})
+
+	decision, err := s.trust.RecordDecision(domaintrust.TrustDecision{
+		ID:             "decision-challenger-approval-removed",
+		EntityType:     "refund",
+		EntityID:       refund.ID,
+		Outcome:        "step_up_required",
+		ReasonCodes:    []string{"approval_missing", "agent_refund"},
+		MandateRef:     mandate.ID,
+		ProvenanceRef:  provenance.ID,
+		StepUpRequired: true,
+		RecordedAt:     refundRequestedAt.Add(30 * time.Second),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	eventRefs := []string{
+		s.events.RecordTransaction("evt-challenger-approval-order-created", domainevents.TransactionEventOrderCreated, "order", order.ID, item.ID, world.agent.ID, orderCreatedAt, map[string]any{"total_amount": order.TotalAmount}).ID,
+		s.events.RecordTransaction("evt-challenger-approval-payment", domainevents.TransactionEventPaymentAuthorized, "payment", payment.ID, item.ID, world.agent.ID, payment.AuthorizedAt, map[string]any{"order_id": order.ID}).ID,
+		s.events.RecordTransaction("evt-challenger-approval-refund", domainevents.TransactionEventRefundRequested, "refund", refund.ID, item.ID, world.agent.ID, refundRequestedAt, map[string]any{"order_id": order.ID}).ID,
+		s.events.RecordTrust("evt-challenger-approval-order-submitted", domainevents.TrustEventOrderSubmittedByAgent, "refund", refund.ID, item.ID, world.agent.ID, refundRequestedAt, map[string]any{"delegation_mode": world.delegation}).ID,
+		s.events.RecordTrust("evt-challenger-approval-mandate", domainevents.TrustEventMandateChecked, "mandate", mandate.ID, item.ID, world.agent.ID, refundRequestedAt.Add(5*time.Second), map[string]any{"status": mandate.Status}).ID,
+		s.events.RecordTrust("evt-challenger-approval-provenance", domainevents.TrustEventProvenanceAttached, "provenance_record", provenance.ID, item.ID, world.agent.ID, provenance.CreatedAt, map[string]any{"confidence": provenance.Confidence}).ID,
+		s.events.RecordTrust("evt-challenger-approval-decision", domainevents.TrustEventTrustDecisionRecorded, "trust_decision", decision.ID, item.ID, world.agent.ID, decision.RecordedAt, map[string]any{"outcome": decision.Outcome}).ID,
+		s.events.RecordTransaction("evt-challenger-approval-refund-decision", domainevents.TransactionEventRefundDecisionRecorded, "refund", refund.ID, item.ID, world.agent.ID, decision.RecordedAt.Add(10*time.Second), map[string]any{"status": refund.Status}).ID,
+	}
+
+	artifact, err := s.artifacts.CreateArtifact(ctx, domaintrust.CreateArtifactInput{
+		ScenarioID: item.ID,
+		ArtifactID: "ta-commerce-challenger-approval-removed",
+		CreatedAt:  decision.RecordedAt.Add(time.Minute),
+	})
+	if err != nil {
+		return ExecutionResult{}, err
+	}
+
+	replayCase, err := s.replay.CreateCase(ctx, domainreplay.CreateCaseInput{
+		CaseID:                  "rc-commerce-challenger-approval-removed",
+		ScenarioID:              item.ID,
+		TrustArtifactRefs:       []string{artifact.ID},
+		BenchmarkRoundRef:       "phase-7-red-queen",
+		OutcomeSummary:          "Agent-driven refund without approval evidence required step-up.",
+		PromotionRecommendation: "hold",
+		PromotionReason:         "Approval-removed refund remains a living challenger for regression testing.",
 		RecordedAt:              decision.RecordedAt.Add(2 * time.Minute),
 	})
 	if err != nil {

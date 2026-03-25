@@ -42,6 +42,13 @@ type ReplayService interface {
 
 type BenchmarkService interface {
 	RegisterRound(context.Context, benchmark.RegistrationRequest) (benchmark.RegistrationResult, error)
+	RunRound(context.Context, benchmark.RunInput) (benchmark.BenchmarkRound, error)
+	ListRounds() []benchmark.BenchmarkRound
+	GetRound(string) (benchmark.BenchmarkRound, error)
+	GetRoundSummary(string) (benchmark.RoundSummary, error)
+	GetRoundPromotions(string) ([]benchmark.PromotionDecision, error)
+	GetRoundDelta(string) ([]benchmark.DetectionDelta, error)
+	GetRoundReports(string) (benchmark.ReportIndex, error)
 	Status() map[string]any
 }
 
@@ -239,6 +246,69 @@ func (h *TrustLabHandler) TrustStatus(w http.ResponseWriter, r *http.Request) {
 
 func (h *TrustLabHandler) BenchmarkStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"data": h.benchmark.Status()})
+}
+
+func (h *TrustLabHandler) RunBenchmarkRound(w http.ResponseWriter, r *http.Request) {
+	var input benchmark.RunInput
+	if err := decodeJSON(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	round, err := h.benchmark.RunRound(r.Context(), input)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": round})
+}
+
+func (h *TrustLabHandler) ListBenchmarkRounds(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.benchmark.ListRounds()})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRound(w http.ResponseWriter, r *http.Request) {
+	round, err := h.benchmark.GetRound(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": round})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRoundSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := h.benchmark.GetRoundSummary(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": summary})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRoundPromotions(w http.ResponseWriter, r *http.Request) {
+	items, err := h.benchmark.GetRoundPromotions(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": items})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRoundDelta(w http.ResponseWriter, r *http.Request) {
+	items, err := h.benchmark.GetRoundDelta(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": items})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRoundReports(w http.ResponseWriter, r *http.Request) {
+	reports, err := h.benchmark.GetRoundReports(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": reports})
 }
 
 func (h *TrustLabHandler) CreateArtifact(w http.ResponseWriter, r *http.Request) {

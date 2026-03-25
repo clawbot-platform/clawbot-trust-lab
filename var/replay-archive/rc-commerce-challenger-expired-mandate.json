@@ -1,0 +1,19 @@
+{
+  "id": "rc-commerce-challenger-expired-mandate",
+  "scenario_id": "commerce-challenger-expired-mandate-purchase",
+  "trust_artifact_refs": [
+    "ta-commerce-challenger-expired-mandate"
+  ],
+  "benchmark_round_ref": "phase-7-red-queen",
+  "outcome_summary": "Delegated purchase attempted with expired mandate and required review.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-commerce-challenger-expired-mandate.json"
+  },
+  "promotion": {
+    "status": "review",
+    "reason": "Expired mandate challenger remains useful for regression tracking.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T10:04:00Z"
+}

@@ -23,6 +23,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.ScenarioPacksDir != "./configs/scenario-packs" {
 		t.Fatalf("unexpected ScenarioPacksDir: %s", cfg.ScenarioPacksDir)
 	}
+	if cfg.ReportsDir != "./reports" {
+		t.Fatalf("unexpected ReportsDir: %s", cfg.ReportsDir)
+	}
 }
 
 func TestLoadRequiresControlPlaneURL(t *testing.T) {

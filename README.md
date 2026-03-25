@@ -2,7 +2,7 @@
 
 `clawbot-trust-lab` is the flagship trust-lab vertical for the `clawbot-platform` organization.
 
-Phase 6 adds the first real detection baseline on top of the earlier commerce-world, replay, and `clawmem` integration work. The repo can now execute deterministic commerce scenarios, emit transaction and trust events, record trust decisions, persist replay plus memory outputs, and evaluate those flows with a deterministic explainable detector.
+Phase 7 adds the Red Queen MVP on top of the earlier commerce-world, replay, and `clawmem` integration work. The repo can now execute deterministic commerce scenarios, evaluate them with the baseline detector, run explicit challenger variants, retest previously promoted replay cases, and generate round-level JSON and Markdown reports.
 
 ## What belongs here
 
@@ -51,6 +51,14 @@ curl -X POST http://127.0.0.1:8090/api/v1/detection/evaluate \
   --data '{"scenario_id":"commerce-suspicious-refund-attempt"}'
 ```
 
+Run a Phase 7 Red Queen round:
+
+```bash
+curl -X POST http://127.0.0.1:8090/api/v1/benchmark/rounds/run \
+  -H 'Content-Type: application/json' \
+  --data '{"scenario_family":"commerce"}'
+```
+
 Run tests:
 
 ```bash
@@ -62,17 +70,19 @@ go test ./...
 - `cmd/trust-lab/` contains the service entrypoint
 - `internal/app/` wires config, bootstrap, router, and graceful shutdown
 - `internal/domain/` contains trust-lab domain types and Phase 3 plus 4.1 services
-- `internal/services/` contains the Phase 5 commerce, event, trust-decision, scenario execution, and Phase 6 detection layer
+- `internal/services/` contains the commerce, event, trust-decision, scenario execution, detection, benchmark-round, and reporting layers
 - `internal/clients/` contains external service clients, including the live `clawmem` HTTP client
 - `internal/platform/loader/` loads versioned scenario packs from disk
 - `internal/platform/store/` contains local in-memory and file-backed stores for the trust-lab slice
-- `configs/scenario-packs/` contains starter scenario pack data
-- `docs/` contains Phase 2 through 6 architecture and contributor docs
+- `configs/scenario-packs/` contains stable and challenger scenario packs
+- `reports/` is the Phase 7 report output root
+- `docs/` contains Phase 2 through 7 architecture and contributor docs
 
 ## Docs
 
 - [Architecture](./docs/architecture.md)
 - [API](./docs/api.md)
+- [Benchmark model](./docs/benchmark-model.md)
 - [Commerce model](./docs/commerce-model.md)
 - [Development](./docs/development.md)
 - [Detection model](./docs/detection-model.md)
@@ -84,4 +94,6 @@ go test ./...
 - [Phase 4.1 clawmem integration](./docs/phase-4-1-clawmem-integration.md)
 - [Phase 5 commerce world](./docs/phase-5-commerce-world.md)
 - [Phase 6 detection baseline](./docs/phase-6-detection-baseline.md)
+- [Phase 7 Red Queen MVP](./docs/phase-7-red-queen-mvp.md)
+- [Reporting spec](./docs/reporting-spec.md)
 - [Scenario pack format](./docs/scenario-pack-format.md)

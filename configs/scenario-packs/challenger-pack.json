@@ -1,0 +1,41 @@
+{
+  "id": "challenger-pack",
+  "name": "Commerce Challenger Pack",
+  "version": "v1",
+  "description": "Phase 7 deterministic challenger variants for the Red Queen MVP benchmark loop.",
+  "scenarios": [
+    {
+      "id": "commerce-challenger-weakened-provenance-purchase",
+      "name": "Challenger Weakened Provenance Purchase",
+      "version": "v1",
+      "scenario_type": "commerce_purchase",
+      "description": "A delegated purchase keeps provenance attached but weakens provenance confidence enough to probe a baseline blind spot.",
+      "actors": ["operator", "reviewer"],
+      "trust_signals": ["active-mandate", "weak-provenance", "delegation-visible"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-gap-low-provenance", "candidate-replay-promotion"],
+      "tags": ["commerce", "phase-7", "challenger", "weakened-provenance"]
+    },
+    {
+      "id": "commerce-challenger-expired-mandate-purchase",
+      "name": "Challenger Expired Mandate Purchase",
+      "version": "v1",
+      "scenario_type": "commerce_purchase",
+      "description": "A delegated purchase proceeds with expired authority to confirm the detector still catches mandate gaps.",
+      "actors": ["operator", "reviewer"],
+      "trust_signals": ["expired-mandate", "attached-provenance", "delegation-visible"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-review-required"],
+      "tags": ["commerce", "phase-7", "challenger", "expired-mandate"]
+    },
+    {
+      "id": "commerce-challenger-approval-removed-refund",
+      "name": "Challenger Approval Removed Refund",
+      "version": "v1",
+      "scenario_type": "commerce_refund_review",
+      "description": "An agent-driven refund path removes approval evidence to verify the baseline still escalates refund risk.",
+      "actors": ["operator", "reviewer"],
+      "trust_signals": ["active-mandate", "attached-provenance", "approval-removed"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
+      "tags": ["commerce", "phase-7", "challenger", "approval-removed"]
+    }
+  ]
+}

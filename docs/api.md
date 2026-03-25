@@ -1,6 +1,6 @@
 # API
 
-Phase 6 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, and adds a deterministic explainable detection baseline.
+Phase 7 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, the explainable detection baseline, and adds the Red Queen MVP benchmark round loop.
 
 ## System
 
@@ -128,6 +128,13 @@ Example:
 ## Benchmark
 
 - `POST /api/v1/benchmark/rounds/register`
+- `POST /api/v1/benchmark/rounds/run`
+- `GET /api/v1/benchmark/rounds`
+- `GET /api/v1/benchmark/rounds/{id}`
+- `GET /api/v1/benchmark/rounds/{id}/summary`
+- `GET /api/v1/benchmark/rounds/{id}/promotions`
+- `GET /api/v1/benchmark/rounds/{id}/delta`
+- `GET /api/v1/benchmark/rounds/{id}/reports`
 - `GET /api/v1/benchmark/rounds/status`
 - `GET /api/v1/benchmark/status`
 
@@ -151,6 +158,29 @@ Example:
   "notes": "Phase 3 benchmark registration slice"
 }
 ```
+
+Run example:
+
+```json
+{
+  "scenario_family": "commerce"
+}
+```
+
+Round responses include:
+- stable-set results
+- living-set challenger results
+- replay regression results
+- promotion decisions
+- detection delta
+- report directory and artifact paths
+
+The report API exposes the generated artifacts under `reports/<round-id>/`, including:
+- `round-summary.json`
+- `round-summary.md`
+- `detection-delta.json`
+- `promotion-report.json`
+- `executive-summary.md`
 
 ## Startup order
 

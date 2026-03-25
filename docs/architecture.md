@@ -7,7 +7,7 @@
 - `clawbot-server` provides the shared foundation and control-plane APIs
 - `clawmem` provides persistent memory-oriented APIs for trust and replay summaries
 
-## Phase 2 through Phase 5 topology
+## Phase 2 through Phase 7 topology
 
 The runtime stays intentionally small:
 
@@ -17,6 +17,8 @@ The runtime stays intentionally small:
 - a real `clawmem` HTTP client
 - a scenario-pack loader
 - a deterministic scenario execution layer
+- a deterministic benchmark-round runner
+- a lightweight reporting layer
 - a small in-memory commerce world store
 - a file-backed replay archive store
 - local trust artifact storage for the trust-lab API surface
@@ -28,13 +30,14 @@ The runtime stays intentionally small:
 2. `POST /api/v1/scenarios/execute` runs one deterministic commerce scenario.
 3. Scenario execution updates a local world state of buyers, merchants, products, orders, payments, refunds, trust decisions, and events.
 4. Scenario execution creates a trust artifact and replay case, which in turn write memory records to `clawmem`.
-5. Inspection APIs expose orders, events, and trust decisions.
+5. Phase 6 detection APIs evaluate the resulting world state.
+6. Phase 7 benchmark APIs run stable scenarios, challenger variants, and replay regression cases, then emit report artifacts under `reports/<round-id>/`.
 
 Write failures to `clawmem` are treated as request failures. Status enrichment is best-effort and reports degraded memory context rather than failing the whole status endpoint.
 
-## Phase 5 role in the roadmap
+## Phase 5 through Phase 7 role in the roadmap
 
-Phase 5 is the event-first world model that later phases will use for:
+These phases together create the baseline loop that later phases will use for:
 
 - a detection baseline
 - benchmark rounds against stable and suspicious flows

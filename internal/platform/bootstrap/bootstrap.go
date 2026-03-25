@@ -13,9 +13,11 @@ import (
 	"clawbot-trust-lab/internal/domain/trust"
 	"clawbot-trust-lab/internal/platform/loader"
 	"clawbot-trust-lab/internal/platform/store"
+	servicebenchmark "clawbot-trust-lab/internal/services/benchmark"
 	servicecommerce "clawbot-trust-lab/internal/services/commerce"
 	servicedetection "clawbot-trust-lab/internal/services/detection"
 	serviceevents "clawbot-trust-lab/internal/services/events"
+	servicereporting "clawbot-trust-lab/internal/services/reporting"
 	servicescenario "clawbot-trust-lab/internal/services/scenario"
 	servicetrust "clawbot-trust-lab/internal/services/trust"
 )
@@ -26,7 +28,7 @@ type Dependencies struct {
 	Scenarios    *scenario.Service
 	Trust        *trust.Service
 	Replay       *replay.Service
-	Benchmark    *benchmark.Service
+	Benchmark    *servicebenchmark.Service
 	Commerce     *servicecommerce.Service
 	Events       *serviceevents.Service
 	TrustFlow    *servicetrust.Service
@@ -48,6 +50,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 	}
 	worldStore := store.NewCommerceWorldStore()
 	detectionStore := store.NewDetectionStore()
+	benchmarkStore := store.NewBenchmarkStore()
 	commerceService := servicecommerce.NewService(worldStore)
 	eventService := serviceevents.NewService(worldStore)
 	trustFlowService := servicetrust.NewService(worldStore)
@@ -55,6 +58,9 @@ func Build(cfg config.Config) (Dependencies, error) {
 	replayService := replay.NewService(replayStore, memoryClient)
 	executionService := servicescenario.NewService(scenarioService, commerceService, eventService, trustFlowService, trustService, replayService)
 	detectionService := servicedetection.NewService(worldStore, executionService, replayService, memoryClient, detectionStore)
+	reportingService := servicereporting.NewService(cfg.ReportsDir)
+	benchmarkRegistrationService := benchmark.NewService(controlPlaneClient)
+	benchmarkRoundService := servicebenchmark.NewService(benchmarkRegistrationService, executionService, detectionService, replayService, benchmarkStore, reportingService)
 
 	return Dependencies{
 		ControlPlane: controlPlaneClient,
@@ -62,7 +68,7 @@ func Build(cfg config.Config) (Dependencies, error) {
 		Scenarios:    scenarioService,
 		Trust:        trustService,
 		Replay:       replayService,
-		Benchmark:    benchmark.NewService(controlPlaneClient),
+		Benchmark:    benchmarkRoundService,
 		Commerce:     commerceService,
 		Events:       eventService,
 		TrustFlow:    trustFlowService,

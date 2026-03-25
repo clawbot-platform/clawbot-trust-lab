@@ -6,3 +6,5 @@
 .vscode/
 bin/
 coverage.out
+reports/*
+!reports/.gitkeep

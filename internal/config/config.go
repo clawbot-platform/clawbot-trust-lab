@@ -18,6 +18,7 @@ type Config struct {
 	ClawMemTimeout      time.Duration
 	ScenarioPacksDir    string
 	ReplayArchiveDir    string
+	ReportsDir          string
 }
 
 func Load() (Config, error) {
@@ -29,6 +30,7 @@ func Load() (Config, error) {
 		ClawMemBaseURL:   envOrDefaultCompat("CLAWMEM_BASE_URL", "MEMORY_BASE_URL", "http://127.0.0.1:8088"),
 		ScenarioPacksDir: envOrDefault("SCENARIO_PACKS_DIR", "./configs/scenario-packs"),
 		ReplayArchiveDir: envOrDefault("REPLAY_ARCHIVE_DIR", "./var/replay-archive"),
+		ReportsDir:       envOrDefault("REPORTS_DIR", "./reports"),
 	}
 
 	var err error
@@ -59,6 +61,9 @@ func Load() (Config, error) {
 	}
 	if cfg.ReplayArchiveDir == "" {
 		return Config{}, fmt.Errorf("REPLAY_ARCHIVE_DIR is required")
+	}
+	if cfg.ReportsDir == "" {
+		return Config{}, fmt.Errorf("REPORTS_DIR is required")
 	}
 
 	return cfg, nil
