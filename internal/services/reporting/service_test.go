@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,5 +158,88 @@ func TestBackfillRecommendationReportIsIdempotent(t *testing.T) {
 	}
 	if string(firstBody) != string(secondBody) {
 		t.Fatal("expected recommendation report content to remain unchanged on rerun")
+	}
+}
+
+func TestBuildRecommendationReportCopiesRoundSummaryFields(t *testing.T) {
+	round := benchmark.BenchmarkRound{
+		ID: "round-copy",
+		Summary: benchmark.RoundSummary{
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Compare sidecar recommendations to the incumbent fraud stack.",
+			RecommendedFollowUp: "Review refund rule tuning.",
+		},
+		Recommendations: []benchmark.Recommendation{{
+			ID:                "rec-copy",
+			LinkedRoundID:     "round-copy",
+			LinkedScenarioIDs: []string{"commerce-s1-refund-weak-authorization"},
+		}},
+	}
+
+	report := BuildRecommendationReport(round)
+	if report.RoundID != round.ID || report.EvaluationMode != "shadow" || report.BlockingMode != "recommendation_only" {
+		t.Fatalf("unexpected report header %#v", report)
+	}
+	if report.ExistingControlIntegrationNote != round.Summary.ExistingControlNote || report.RecommendedFollowUp != round.Summary.RecommendedFollowUp {
+		t.Fatalf("expected summary text to copy through, got %#v", report)
+	}
+	if len(report.Recommendations) != 1 || report.Recommendations[0].LinkedRoundID != round.ID {
+		t.Fatalf("expected recommendation linkage to be preserved, got %#v", report.Recommendations)
+	}
+}
+
+func TestRoundSummaryMarkdownHandlesEmptySections(t *testing.T) {
+	service := NewService(t.TempDir())
+	round := benchmark.BenchmarkRound{
+		ID:             "round-empty",
+		ScenarioFamily: "commerce",
+		Summary: benchmark.RoundSummary{
+			ScenarioFamily:      "commerce",
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Sidecar only.",
+			RecommendedFollowUp: "No action.",
+		},
+	}
+
+	body := service.roundSummaryMarkdown(round)
+	for _, snippet := range []string{
+		"No notable findings were recorded.",
+		"No challenger cases were promoted in this round.",
+		"No explicit recommendations were generated.",
+		"Recommended follow-up: No action.",
+	} {
+		if !strings.Contains(body, snippet) {
+			t.Fatalf("expected markdown to contain %q, got %s", snippet, body)
+		}
+	}
+}
+
+func TestExecutiveSummaryUsesRegressionHeadline(t *testing.T) {
+	service := NewService(t.TempDir())
+	round := benchmark.BenchmarkRound{
+		ID: "round-regressed",
+		Summary: benchmark.RoundSummary{
+			StableScenarioCount: 1,
+			ChallengerCount:     2,
+			ReplayRetestCount:   3,
+			RobustnessOutcome:   benchmark.RobustnessOutcomeRegressed,
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Keep as sidecar.",
+			RecommendedFollowUp: "Escalate replay review.",
+		},
+	}
+
+	body := service.executiveSummary(round)
+	for _, snippet := range []string{
+		"Regression observed",
+		"evaluated 1 stable scenarios, 2 challenger variants, and 3 replay retests.",
+		"Escalate replay review.",
+	} {
+		if !strings.Contains(body, snippet) {
+			t.Fatalf("expected executive summary to contain %q, got %s", snippet, body)
+		}
 	}
 }

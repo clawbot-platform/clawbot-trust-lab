@@ -51,6 +51,107 @@ type Service struct {
 	now    func() time.Time
 }
 
+const (
+	ruleMissingMandateDelegatedAction = "missing_mandate_delegated_action"
+	ruleMissingProvenanceSensitive    = "missing_provenance_sensitive_action"
+	ruleRefundWeakAuthorization       = "refund_weak_authorization"
+	ruleAgentRefundWithoutApproval    = "agent_refund_without_approval"
+	rulePriorStepUpDecision           = "prior_step_up_decision"
+	ruleRepeatSuspiciousContext       = "repeat_suspicious_context"
+	ruleMerchantScopeDriftDelegated   = "merchant_scope_drift_delegated_action"
+	ruleHighValueDelegatedPurchase    = "high_value_delegated_purchase"
+	ruleActorSwitchSensitiveAction    = "actor_switch_sensitive_action"
+)
+
+type ruleSpec struct {
+	definition detectionmodel.RuleDefinition
+	reason     string
+}
+
+var ruleCatalog = []ruleSpec{
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleMissingMandateDelegatedAction,
+			Title:       "Missing or expired mandate on delegated action",
+			Description: "Delegated commerce actions should not proceed without a valid mandate.",
+			Severity:    20,
+		},
+		reason: "delegated action did not carry an active mandate",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleMissingProvenanceSensitive,
+			Title:       "Missing or weak provenance on sensitive action",
+			Description: "Sensitive delegated actions should carry provenance evidence, and weak provenance should still increase concern.",
+			Severity:    15,
+		},
+		reason: "sensitive delegated action lacked strong provenance evidence",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleRefundWeakAuthorization,
+			Title:       "Refund with weak authorization",
+			Description: "Refunds should not proceed with weak or expired authority.",
+			Severity:    25,
+		},
+		reason: "refund was requested without strong authorization coverage",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleAgentRefundWithoutApproval,
+			Title:       "Agent refund with no approval evidence",
+			Description: "Agent-driven refund flows should carry explicit approval evidence.",
+			Severity:    20,
+		},
+		reason: "agent-driven refund did not carry approval evidence",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          rulePriorStepUpDecision,
+			Title:       "Prior trust decision required step-up",
+			Description: "Existing step-up decisions should increase downstream concern.",
+			Severity:    10,
+		},
+		reason: "trust surface already recorded a step-up decision",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleRepeatSuspiciousContext,
+			Title:       "Repeat suspicious refund behavior",
+			Description: "Escalating repeat refund attempts should increase concern even before deeper replay history accumulates.",
+			Severity:    15,
+		},
+		reason: "repeat refund history crossed the local escalation threshold or remained suspicious across replay and memory context",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleMerchantScopeDriftDelegated,
+			Title:       "Merchant or category scope drift under delegated action",
+			Description: "Delegated purchases drifting outside prior merchant or category scope should be reviewed.",
+			Severity:    15,
+		},
+		reason: "delegated action moved outside prior merchant or category scope",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleHighValueDelegatedPurchase,
+			Title:       "High-value delegated purchase above baseline",
+			Description: "Delegated purchases that materially exceed the buyer's prior spend baseline should be reviewed.",
+			Severity:    15,
+		},
+		reason: "delegated purchase materially exceeded the buyer's prior spend baseline",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleActorSwitchSensitiveAction,
+			Title:       "Sensitive action switched from human to agent",
+			Description: "Sensitive flows that switch from human to agent without stronger controls should increase concern.",
+			Severity:    10,
+		},
+		reason: "sensitive action switched to an agent actor without stronger controls",
+	},
+}
+
 type EvaluateInput struct {
 	ScenarioID string `json:"scenario_id,omitempty"`
 	OrderID    string `json:"order_id,omitempty"`
@@ -125,17 +226,11 @@ func (s *Service) Summary() detectionmodel.DetectionRunSummary {
 }
 
 func (s *Service) Rules() []detectionmodel.RuleDefinition {
-	return []detectionmodel.RuleDefinition{
-		{ID: "missing_mandate_delegated_action", Title: "Missing or expired mandate on delegated action", Description: "Delegated commerce actions should not proceed without a valid mandate.", Severity: 20},
-		{ID: "missing_provenance_sensitive_action", Title: "Missing or weak provenance on sensitive action", Description: "Sensitive delegated actions should carry provenance evidence, and weak provenance should still increase concern.", Severity: 15},
-		{ID: "refund_weak_authorization", Title: "Refund with weak authorization", Description: "Refunds should not proceed with weak or expired authority.", Severity: 25},
-		{ID: "agent_refund_without_approval", Title: "Agent refund with no approval evidence", Description: "Agent-driven refund flows should carry explicit approval evidence.", Severity: 20},
-		{ID: "prior_step_up_decision", Title: "Prior trust decision required step-up", Description: "Existing step-up decisions should increase downstream concern.", Severity: 10},
-		{ID: "repeat_suspicious_context", Title: "Repeat suspicious refund behavior", Description: "Escalating repeat refund attempts should increase concern even before deeper replay history accumulates.", Severity: 15},
-		{ID: "merchant_scope_drift_delegated_action", Title: "Merchant or category scope drift under delegated action", Description: "Delegated purchases drifting outside prior merchant or category scope should be reviewed.", Severity: 15},
-		{ID: "high_value_delegated_purchase", Title: "High-value delegated purchase above baseline", Description: "Delegated purchases that materially exceed the buyer's prior spend baseline should be reviewed.", Severity: 15},
-		{ID: "actor_switch_sensitive_action", Title: "Sensitive action switched from human to agent", Description: "Sensitive flows that switch from human to agent without stronger controls should increase concern.", Severity: 10},
+	definitions := make([]detectionmodel.RuleDefinition, 0, len(ruleCatalog))
+	for _, rule := range ruleCatalog {
+		definitions = append(definitions, rule.definition)
 	}
+	return definitions
 }
 
 func (s *Service) resolveExecution(input EvaluateInput) (executionsvc.ExecutionResult, error) {
@@ -152,63 +247,12 @@ func (s *Service) buildContext(ctx context.Context, execution executionsvc.Execu
 	orderID := firstRef(execution.Entities.OrderRefs)
 	refundID := firstRef(execution.Entities.RefundRefs)
 
-	order, _ := s.world.GetOrder(orderID)
-	var mandate domaintrust.Mandate
-	if order.MandateRef != "" {
-		mandate, _ = s.world.GetMandate(order.MandateRef)
-	}
-	var provenance domaintrust.ProvenanceRecord
-	if order.ProvenanceRef != "" {
-		provenance, _ = s.world.GetProvenance(order.ProvenanceRef)
-	}
-
-	approvals := s.world.ListApprovals()
-	approvalPresent := false
-	for _, approval := range approvals {
-		if approval.OrderID == orderID && strings.TrimSpace(approval.Outcome) != "" && !strings.EqualFold(approval.Outcome, "missing") {
-			approvalPresent = true
-			break
-		}
-	}
-
-	events := s.world.ListEvents()
-	relatedEvents := filterEvents(events, execution.Scenario.ID, append(execution.Entities.OrderRefs, execution.Entities.RefundRefs...))
-	trustEventCount := 0
-	for _, event := range relatedEvents {
-		if event.Category == domainevents.EventCategoryTrust {
-			trustEventCount++
-		}
-	}
-
-	decisions := execution.TrustDecisions
-	stepUp := false
-	reasonCount := 0
-	for _, decision := range decisions {
-		reasonCount += len(decision.ReasonCodes)
-		if decision.StepUpRequired {
-			stepUp = true
-		}
-	}
-
-	replayCases := s.replay.ListCases()
-	replayHistoryCount := 0
-	for _, item := range replayCases {
-		if item.ScenarioID == execution.Scenario.ID {
-			replayHistoryCount++
-		}
-	}
-
-	memoryContextPresent := false
-	memoryStatus := "degraded"
-	if response, err := s.memory.LoadScenarioContext(ctx, memory.LoadScenarioContextRequest{ScenarioID: execution.Scenario.ID}); err == nil {
-		if count, ok := response.Context["record_count"].(int); ok && count > 0 {
-			memoryContextPresent = true
-		}
-		if count, ok := response.Context["record_count"].(float64); ok && count > 0 {
-			memoryContextPresent = true
-		}
-		memoryStatus = "ok"
-	}
+	order, mandate, provenance := s.loadOrderTrustContext(orderID)
+	approvalPresent := s.hasApproval(orderID)
+	relatedEvents, trustEventCount := relatedEventMetrics(s.world.ListEvents(), execution.Scenario.ID, append(execution.Entities.OrderRefs, execution.Entities.RefundRefs...))
+	stepUp, reasonCount := trustDecisionMetrics(execution.TrustDecisions)
+	replayHistoryCount := s.replayHistoryCount(execution.Scenario.ID)
+	memoryContextPresent, memoryStatus := s.loadMemoryContext(ctx, execution.Scenario.ID)
 
 	refundRequestedByAgent := refundID != "" && strings.Contains(firstRefundActor(s.world.ListRefunds(), refundID), "agent")
 	delegatedActorPresent := refundRequestedByAgent || strings.Contains(order.SubmittedByActorID, "agent") || order.DelegationMode != "direct_human" || signalBool(execution.SignalContext, "delegated_indicator")
@@ -229,10 +273,8 @@ func (s *Service) buildContext(ctx context.Context, execution executionsvc.Execu
 
 	tierA := signalStringSlice(execution.SignalContext, "tier_a_features")
 	tierB := signalStringSlice(execution.SignalContext, "tier_b_features")
-	tierC, tierCUsed := signalStringSlice(execution.SignalContext, "tier_c_features"), false
-	if len(tierC) > 0 && (mandate.ID != "" || provenance.ID != "" || approvalPresent || signalBool(execution.SignalContext, "approval_removed")) {
-		tierCUsed = true
-	}
+	tierC := signalStringSlice(execution.SignalContext, "tier_c_features")
+	tierProfile := buildTierProfile(tierA, tierB, tierC, mandate, provenance, approvalPresent, signalBool(execution.SignalContext, "approval_removed"))
 
 	features := map[string]bool{
 		"delegated_actor_present":       delegatedActorPresent,
@@ -263,7 +305,7 @@ func (s *Service) buildContext(ctx context.Context, execution executionsvc.Execu
 		ScenarioID:        execution.Scenario.ID,
 		OrderID:           orderID,
 		RefundID:          refundID,
-		TrustDecisionRefs: trustDecisionRefs(decisions),
+		TrustDecisionRefs: trustDecisionRefs(execution.TrustDecisions),
 		ReplayCaseRefs:    append([]string(nil), execution.ReplayCaseRefs...),
 		Features:          features,
 		Signals: map[string]any{
@@ -283,15 +325,7 @@ func (s *Service) buildContext(ctx context.Context, execution executionsvc.Execu
 		ReplayHistoryCount:       replayHistoryCount,
 		MemoryContextPresent:     memoryContextPresent,
 		MemoryStatus:             memoryStatus,
-		TierProfile: detectionmodel.TierProfile{
-			TierAAvailable: len(tierA) > 0,
-			TierBAvailable: len(tierB) > 0,
-			TierCAvailable: len(tierC) > 0,
-			TierCUsed:      tierCUsed,
-			TierANotes:     append([]string(nil), tierA...),
-			TierBNotes:     append([]string(nil), tierB...),
-			TierCNotes:     append([]string(nil), tierC...),
-		},
+		TierProfile:              tierProfile,
 	}
 }
 
@@ -300,44 +334,147 @@ func (s *Service) evaluateRules(contextData detectionmodel.DetectionContext) []d
 	f := contextData.Features
 
 	if f["delegated_actor_present"] && (f["mandate_missing"] || f["mandate_expired"]) {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "missing_mandate_delegated_action", Title: "Missing or expired mandate on delegated action", Severity: 20, Reason: "delegated action did not carry an active mandate", Metadata: map[string]any{"scenario_id": contextData.ScenarioID}})
+		hits = append(hits, buildRuleHit(ruleMissingMandateDelegatedAction, map[string]any{"scenario_id": contextData.ScenarioID}))
 	}
 	if (f["delegated_actor_present"] || f["order_submitted_by_agent"] || f["refund_requested_by_agent"] || f["fully_delegated_action"]) && (f["provenance_missing"] || f["weak_provenance"]) {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "missing_provenance_sensitive_action", Title: "Missing or weak provenance on sensitive action", Severity: 15, Reason: "sensitive delegated action lacked strong provenance evidence", Metadata: map[string]any{"scenario_id": contextData.ScenarioID, "tier_c_used": contextData.TierProfile.TierCUsed}})
+		hits = append(hits, buildRuleHit(ruleMissingProvenanceSensitive, map[string]any{"scenario_id": contextData.ScenarioID, "tier_c_used": contextData.TierProfile.TierCUsed}))
 	}
 	if f["refund_requested"] && f["refund_without_authorization"] {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "refund_weak_authorization", Title: "Refund with weak authorization", Severity: 25, Reason: "refund was requested without strong authorization coverage", Metadata: map[string]any{"refund_id": contextData.RefundID}})
+		hits = append(hits, buildRuleHit(ruleRefundWeakAuthorization, map[string]any{"refund_id": contextData.RefundID}))
 	}
 	if f["refund_requested_by_agent"] && (f["approval_missing"] || f["approval_removed"]) {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "agent_refund_without_approval", Title: "Agent refund with no approval evidence", Severity: 20, Reason: "agent-driven refund did not carry approval evidence", Metadata: map[string]any{"refund_id": contextData.RefundID}})
+		hits = append(hits, buildRuleHit(ruleAgentRefundWithoutApproval, map[string]any{"refund_id": contextData.RefundID}))
 	}
 	if f["trust_decision_step_up"] {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "prior_step_up_decision", Title: "Prior trust decision required step-up", Severity: 10, Reason: "trust surface already recorded a step-up decision", Metadata: map[string]any{"trust_decision_refs": contextData.TrustDecisionRefs}})
+		hits = append(hits, buildRuleHit(rulePriorStepUpDecision, map[string]any{"trust_decision_refs": contextData.TrustDecisionRefs}))
 	}
 	if f["repeat_attempt_escalation"] || ((f["trust_decision_step_up"] || f["refund_requested_by_agent"]) && contextData.ReplayHistoryCount > 1 && contextData.MemoryContextPresent) {
-		hits = append(hits, detectionmodel.RuleHit{
-			RuleID:   "repeat_suspicious_context",
-			Title:    "Repeat suspicious refund behavior",
-			Severity: 15,
-			Reason:   "repeat refund history crossed the local escalation threshold or remained suspicious across replay and memory context",
-			Metadata: map[string]any{
-				"replay_history_count": contextData.ReplayHistoryCount,
-				"signals":              contextData.Signals,
-			},
-		})
+		hits = append(hits, buildRuleHit(ruleRepeatSuspiciousContext, map[string]any{
+			"replay_history_count": contextData.ReplayHistoryCount,
+			"signals":              contextData.Signals,
+		}))
 	}
 	if f["delegated_actor_present"] && f["merchant_scope_drift"] {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "merchant_scope_drift_delegated_action", Title: "Merchant or category scope drift under delegated action", Severity: 15, Reason: "delegated action moved outside prior merchant or category scope", Metadata: map[string]any{"signals": contextData.Signals}})
+		hits = append(hits, buildRuleHit(ruleMerchantScopeDriftDelegated, map[string]any{"signals": contextData.Signals}))
 	}
 	if f["high_value_delegated_purchase"] {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "high_value_delegated_purchase", Title: "High-value delegated purchase above baseline", Severity: 15, Reason: "delegated purchase materially exceeded the buyer's prior spend baseline", Metadata: map[string]any{"signals": contextData.Signals}})
+		hits = append(hits, buildRuleHit(ruleHighValueDelegatedPurchase, map[string]any{"signals": contextData.Signals}))
 	}
 	if f["actor_switch_to_agent"] {
-		hits = append(hits, detectionmodel.RuleHit{RuleID: "actor_switch_sensitive_action", Title: "Sensitive action switched from human to agent", Severity: 10, Reason: "sensitive action switched to an agent actor without stronger controls", Metadata: map[string]any{"scenario_id": contextData.ScenarioID}})
+		hits = append(hits, buildRuleHit(ruleActorSwitchSensitiveAction, map[string]any{"scenario_id": contextData.ScenarioID}))
 	}
 
 	sort.Slice(hits, func(i, j int) bool { return hits[i].RuleID < hits[j].RuleID })
 	return hits
+}
+
+func (s *Service) loadOrderTrustContext(orderID string) (commerce.Order, domaintrust.Mandate, domaintrust.ProvenanceRecord) {
+	order, _ := s.world.GetOrder(orderID)
+	var mandate domaintrust.Mandate
+	if order.MandateRef != "" {
+		mandate, _ = s.world.GetMandate(order.MandateRef)
+	}
+	var provenance domaintrust.ProvenanceRecord
+	if order.ProvenanceRef != "" {
+		provenance, _ = s.world.GetProvenance(order.ProvenanceRef)
+	}
+	return order, mandate, provenance
+}
+
+func (s *Service) hasApproval(orderID string) bool {
+	for _, approval := range s.world.ListApprovals() {
+		if approval.OrderID == orderID && strings.TrimSpace(approval.Outcome) != "" && !strings.EqualFold(approval.Outcome, "missing") {
+			return true
+		}
+	}
+	return false
+}
+
+func relatedEventMetrics(events []domainevents.Record, scenarioID string, entityIDs []string) ([]domainevents.Record, int) {
+	related := filterEvents(events, scenarioID, entityIDs)
+	trustEventCount := 0
+	for _, event := range related {
+		if event.Category == domainevents.EventCategoryTrust {
+			trustEventCount++
+		}
+	}
+	return related, trustEventCount
+}
+
+func trustDecisionMetrics(decisions []domaintrust.TrustDecision) (bool, int) {
+	stepUp := false
+	reasonCount := 0
+	for _, decision := range decisions {
+		reasonCount += len(decision.ReasonCodes)
+		if decision.StepUpRequired {
+			stepUp = true
+		}
+	}
+	return stepUp, reasonCount
+}
+
+func (s *Service) replayHistoryCount(scenarioID string) int {
+	count := 0
+	for _, item := range s.replay.ListCases() {
+		if item.ScenarioID == scenarioID {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *Service) loadMemoryContext(ctx context.Context, scenarioID string) (bool, string) {
+	response, err := s.memory.LoadScenarioContext(ctx, memory.LoadScenarioContextRequest{ScenarioID: scenarioID})
+	if err != nil {
+		return false, "degraded"
+	}
+	return contextRecordCount(response.Context) > 0, "ok"
+}
+
+func contextRecordCount(context map[string]any) int {
+	switch count := context["record_count"].(type) {
+	case int:
+		return count
+	case int64:
+		return int(count)
+	case float64:
+		return int(count)
+	default:
+		return 0
+	}
+}
+
+func buildTierProfile(tierA, tierB, tierC []string, mandate domaintrust.Mandate, provenance domaintrust.ProvenanceRecord, approvalPresent, approvalRemoved bool) detectionmodel.TierProfile {
+	tierCUsed := len(tierC) > 0 && (mandate.ID != "" || provenance.ID != "" || approvalPresent || approvalRemoved)
+	return detectionmodel.TierProfile{
+		TierAAvailable: len(tierA) > 0,
+		TierBAvailable: len(tierB) > 0,
+		TierCAvailable: len(tierC) > 0,
+		TierCUsed:      tierCUsed,
+		TierANotes:     append([]string(nil), tierA...),
+		TierBNotes:     append([]string(nil), tierB...),
+		TierCNotes:     append([]string(nil), tierC...),
+	}
+}
+
+func buildRuleHit(id string, metadata map[string]any) detectionmodel.RuleHit {
+	spec := ruleByID(id)
+	return detectionmodel.RuleHit{
+		RuleID:   spec.definition.ID,
+		Title:    spec.definition.Title,
+		Severity: spec.definition.Severity,
+		Reason:   spec.reason,
+		Metadata: metadata,
+	}
+}
+
+func ruleByID(id string) ruleSpec {
+	for _, rule := range ruleCatalog {
+		if rule.definition.ID == id {
+			return rule
+		}
+	}
+	return ruleSpec{definition: detectionmodel.RuleDefinition{ID: id}}
 }
 
 func deriveOutcome(hits []detectionmodel.RuleHit) (int, detectionmodel.DetectionStatus, detectionmodel.RiskGrade, detectionmodel.Recommendation) {

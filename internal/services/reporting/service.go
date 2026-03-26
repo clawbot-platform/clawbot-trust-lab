@@ -14,6 +14,24 @@ type Service struct {
 	baseDir string
 }
 
+const (
+	ArtifactRoundSummaryJSON   = "round-summary.json"
+	ArtifactRoundSummaryMD     = "round-summary.md"
+	ArtifactDetectionDeltaJSON = "detection-delta.json"
+	ArtifactPromotionReport    = "promotion-report.json"
+	ArtifactRecommendationJSON = "recommendation-report.json"
+	ArtifactExecutiveSummaryMD = "executive-summary.md"
+	artifactKindJSON           = "json"
+	artifactKindMarkdown       = "markdown"
+)
+
+type reportArtifact struct {
+	name    string
+	kind    string
+	payload any
+	body    string
+}
+
 func NewService(baseDir string) *Service {
 	return &Service{baseDir: baseDir}
 }
@@ -24,36 +42,16 @@ func (s *Service) Generate(round benchmark.BenchmarkRound) (benchmark.ReportInde
 		return benchmark.ReportIndex{}, fmt.Errorf("create report dir %s: %w", reportDir, err)
 	}
 
-	type artifact struct {
-		name    string
-		kind    string
-		payload any
-		body    string
-	}
-
-	executive := s.executiveSummary(round)
-	summaryMD := s.roundSummaryMarkdown(round)
-	recommendationReport := BuildRecommendationReport(round)
-
-	artifacts := []artifact{
-		{name: "round-summary.json", kind: "json", payload: round},
-		{name: "round-summary.md", kind: "markdown", body: summaryMD},
-		{name: "detection-delta.json", kind: "json", payload: round.Delta},
-		{name: "promotion-report.json", kind: "json", payload: round.PromotionResults},
-		{name: "recommendation-report.json", kind: "json", payload: recommendationReport},
-		{name: "executive-summary.md", kind: "markdown", body: executive},
-	}
-
 	index := benchmark.ReportIndex{
 		RoundID:   round.ID,
 		Directory: reportDir,
 	}
 
-	for _, item := range artifacts {
+	for _, item := range s.reportArtifacts(round) {
 		path := filepath.Join(reportDir, item.name)
 
 		switch item.kind {
-		case "json":
+		case artifactKindJSON:
 			if err := writeJSON(path, item.payload); err != nil {
 				return benchmark.ReportIndex{}, err
 			}
@@ -73,6 +71,17 @@ func (s *Service) Generate(round benchmark.BenchmarkRound) (benchmark.ReportInde
 	return index, nil
 }
 
+func (s *Service) reportArtifacts(round benchmark.BenchmarkRound) []reportArtifact {
+	return []reportArtifact{
+		{name: ArtifactRoundSummaryJSON, kind: artifactKindJSON, payload: round},
+		{name: ArtifactRoundSummaryMD, kind: artifactKindMarkdown, body: s.roundSummaryMarkdown(round)},
+		{name: ArtifactDetectionDeltaJSON, kind: artifactKindJSON, payload: round.Delta},
+		{name: ArtifactPromotionReport, kind: artifactKindJSON, payload: round.PromotionResults},
+		{name: ArtifactRecommendationJSON, kind: artifactKindJSON, payload: BuildRecommendationReport(round)},
+		{name: ArtifactExecutiveSummaryMD, kind: artifactKindMarkdown, body: s.executiveSummary(round)},
+	}
+}
+
 func BuildRecommendationReport(round benchmark.BenchmarkRound) benchmark.RecommendationReport {
 	return benchmark.RecommendationReport{
 		RoundID:                        round.ID,
@@ -85,7 +94,7 @@ func BuildRecommendationReport(round benchmark.BenchmarkRound) benchmark.Recomme
 }
 
 func BackfillRecommendationReport(reportDir string, round benchmark.BenchmarkRound) (bool, error) {
-	path := filepath.Join(reportDir, "recommendation-report.json")
+	path := filepath.Join(reportDir, ArtifactRecommendationJSON)
 	if _, err := os.Stat(path); err == nil {
 		return false, nil
 	} else if !os.IsNotExist(err) {

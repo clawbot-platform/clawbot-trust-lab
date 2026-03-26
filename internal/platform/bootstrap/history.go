@@ -74,20 +74,44 @@ func LoadHistoricalState(reportsDir string, logger *slog.Logger) HistoricalState
 
 func loadHistoricalRound(reportsDir, roundID string, logger *slog.Logger) (benchmark.BenchmarkRound, bool, error) {
 	roundDir := filepath.Join(reportsDir, roundID)
-	summaryRelPath := filepath.Join(roundID, "round-summary.json")
+	summaryRelPath := filepath.Join(roundID, servicereporting.ArtifactRoundSummaryJSON)
 
 	if _, err := os.Stat(filepath.Join(reportsDir, summaryRelPath)); err != nil {
 		if os.IsNotExist(err) {
 			return benchmark.BenchmarkRound{}, false, nil
 		}
-		return benchmark.BenchmarkRound{}, false, fmt.Errorf("stat round-summary.json: %w", err)
+		return benchmark.BenchmarkRound{}, false, fmt.Errorf("stat %s: %w", servicereporting.ArtifactRoundSummaryJSON, err)
 	}
 
 	var round benchmark.BenchmarkRound
 	if err := readJSON(reportsDir, summaryRelPath, &round); err != nil {
-		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read round-summary.json: %w", err)
+		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read %s: %w", servicereporting.ArtifactRoundSummaryJSON, err)
 	}
 
+	normalizeHistoricalRound(&round, roundID, roundDir)
+	if err := loadHistoricalPromotions(reportsDir, roundID, &round); err != nil {
+		return benchmark.BenchmarkRound{}, false, err
+	}
+	if err := loadHistoricalDelta(reportsDir, roundID, &round); err != nil {
+		return benchmark.BenchmarkRound{}, false, err
+	}
+	ensureHistoricalSummaryCounts(&round)
+	if err := loadHistoricalRecommendationReport(reportsDir, roundID, roundDir, &round, logger); err != nil {
+		return benchmark.BenchmarkRound{}, false, err
+	}
+
+	round.Reports = listReportArtifacts(round.ID, roundDir)
+	if round.Reports.RoundID == "" {
+		round.Reports.RoundID = round.ID
+	}
+
+	return round, true, nil
+}
+
+func normalizeHistoricalRound(round *benchmark.BenchmarkRound, roundID, roundDir string) {
+	if round == nil {
+		return
+	}
 	if round.ID == "" {
 		round.ID = roundID
 	}
@@ -102,11 +126,13 @@ func loadHistoricalRound(reportsDir, roundID string, logger *slog.Logger) (bench
 	if round.Reports.RoundID == "" {
 		round.Reports.RoundID = round.ID
 	}
+}
 
-	promotionsRelPath := filepath.Join(roundID, "promotion-report.json")
+func loadHistoricalPromotions(reportsDir, roundID string, round *benchmark.BenchmarkRound) error {
+	promotionsRelPath := filepath.Join(roundID, servicereporting.ArtifactPromotionReport)
 	var promotions []benchmark.PromotionDecision
 	if ok, err := readOptionalJSON(reportsDir, promotionsRelPath, &promotions); err != nil {
-		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read promotion-report.json: %w", err)
+		return fmt.Errorf("read %s: %w", servicereporting.ArtifactPromotionReport, err)
 	} else if ok {
 		round.PromotionResults = promotions
 	}
@@ -115,15 +141,21 @@ func loadHistoricalRound(reportsDir, roundID string, logger *slog.Logger) (bench
 			round.PromotionResults[idx].RoundID = round.ID
 		}
 	}
+	return nil
+}
 
-	deltaRelPath := filepath.Join(roundID, "detection-delta.json")
+func loadHistoricalDelta(reportsDir, roundID string, round *benchmark.BenchmarkRound) error {
+	deltaRelPath := filepath.Join(roundID, servicereporting.ArtifactDetectionDeltaJSON)
 	var delta []benchmark.DetectionDelta
 	if ok, err := readOptionalJSON(reportsDir, deltaRelPath, &delta); err != nil {
-		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read detection-delta.json: %w", err)
+		return fmt.Errorf("read %s: %w", servicereporting.ArtifactDetectionDeltaJSON, err)
 	} else if ok {
 		round.Delta = delta
 	}
+	return nil
+}
 
+func ensureHistoricalSummaryCounts(round *benchmark.BenchmarkRound) {
 	if round.Summary.PromotionCount == 0 && len(round.PromotionResults) > 0 {
 		round.Summary.PromotionCount = len(round.PromotionResults)
 	}
@@ -133,30 +165,27 @@ func loadHistoricalRound(reportsDir, roundID string, logger *slog.Logger) (bench
 	if round.Summary.ChallengerCount == 0 && len(round.ChallengerVariantRefs) > 0 {
 		round.Summary.ChallengerCount = len(round.ChallengerVariantRefs)
 	}
+}
 
-	reportRelPath := filepath.Join(roundID, "recommendation-report.json")
+func loadHistoricalRecommendationReport(reportsDir, roundID, roundDir string, round *benchmark.BenchmarkRound, logger *slog.Logger) error {
+	reportRelPath := filepath.Join(roundID, servicereporting.ArtifactRecommendationJSON)
 	var report benchmark.RecommendationReport
 	if ok, err := readOptionalJSON(reportsDir, reportRelPath, &report); err != nil {
-		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read recommendation-report.json: %w", err)
+		return fmt.Errorf("read %s: %w", servicereporting.ArtifactRecommendationJSON, err)
 	} else if ok {
-		applyRecommendationReport(&round, report)
-	} else {
-		servicebenchmark.EnsureProductionBridgeSummary(&round)
-		if written, err := servicereporting.BackfillRecommendationReport(roundDir, round); err != nil {
-			if logger != nil {
-				logger.Warn("historical recommendation report backfill failed", "round_id", round.ID, "round_dir", roundDir, "error", err)
-			}
-		} else if written && logger != nil {
-			logger.Info("backfilled historical recommendation report", "round_id", round.ID, "round_dir", roundDir)
+		applyRecommendationReport(round, report)
+		return nil
+	}
+
+	servicebenchmark.EnsureProductionBridgeSummary(round)
+	if written, err := servicereporting.BackfillRecommendationReport(roundDir, *round); err != nil {
+		if logger != nil {
+			logger.Warn("historical recommendation report backfill failed", "round_id", round.ID, "round_dir", roundDir, "error", err)
 		}
+	} else if written && logger != nil {
+		logger.Info("backfilled historical recommendation report", "round_id", round.ID, "round_dir", roundDir)
 	}
-
-	round.Reports = listReportArtifacts(round.ID, roundDir)
-	if round.Reports.RoundID == "" {
-		round.Reports.RoundID = round.ID
-	}
-
-	return round, true, nil
+	return nil
 }
 
 func applyRecommendationReport(round *benchmark.BenchmarkRound, report benchmark.RecommendationReport) {

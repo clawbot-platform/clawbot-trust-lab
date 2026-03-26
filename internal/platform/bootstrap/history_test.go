@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"clawbot-trust-lab/internal/domain/benchmark"
+	detectionmodel "clawbot-trust-lab/internal/domain/detection"
+	servicereporting "clawbot-trust-lab/internal/services/reporting"
 )
 
 func TestLoadHistoricalStateDiscoversRoundsAndPromotions(t *testing.T) {
@@ -202,6 +204,165 @@ func TestLoadHistoricalStateBackfillsLegacyRecommendationReportIdempotently(t *t
 	}
 	if len(state.Rounds) != 1 || !artifactNames(state.Rounds[0].Reports).Has("recommendation-report.json") {
 		t.Fatalf("expected stable report artifact listing after rerun, got %#v", state.Rounds)
+	}
+}
+
+func TestApplyRecommendationReportOnlyFillsMissingFields(t *testing.T) {
+	round := benchmark.BenchmarkRound{
+		ID: "round-existing",
+		Summary: benchmark.RoundSummary{
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "keep existing",
+			RecommendedFollowUp: "keep current",
+			Recommendations:     1,
+		},
+		Recommendations: []benchmark.Recommendation{{
+			ID: "rec-existing",
+		}},
+	}
+
+	applyRecommendationReport(&round, benchmark.RecommendationReport{
+		EvaluationMode:                 "ignored",
+		BlockingMode:                   "ignored",
+		ExistingControlIntegrationNote: "ignored",
+		RecommendedFollowUp:            "ignored",
+		Recommendations:                []benchmark.Recommendation{{ID: "rec-new"}},
+	})
+
+	if round.Summary.EvaluationMode != "shadow" || round.Summary.BlockingMode != "recommendation_only" {
+		t.Fatalf("expected existing production-bridge fields to win, got %#v", round.Summary)
+	}
+	if round.Summary.ExistingControlNote != "keep existing" || round.Summary.RecommendedFollowUp != "keep current" {
+		t.Fatalf("expected existing summary text to be preserved, got %#v", round.Summary)
+	}
+	if len(round.Recommendations) != 1 || round.Recommendations[0].ID != "rec-existing" {
+		t.Fatalf("expected existing recommendations to be preserved, got %#v", round.Recommendations)
+	}
+}
+
+func TestReadJSONRejectsEscapingAndAbsolutePaths(t *testing.T) {
+	root := t.TempDir()
+
+	for _, relPath := range []string{"../round-summary.json", "/tmp/round-summary.json", ""} {
+		var payload map[string]any
+		if err := readJSON(root, relPath, &payload); err == nil {
+			t.Fatalf("expected readJSON(%q) to fail", relPath)
+		}
+	}
+}
+
+func TestReadOptionalJSONMissingFileReturnsFalse(t *testing.T) {
+	root := t.TempDir()
+	var payload map[string]any
+	ok, err := readOptionalJSON(root, servicereporting.ArtifactRecommendationJSON, &payload)
+	if err != nil {
+		t.Fatalf("readOptionalJSON() error = %v", err)
+	}
+	if ok {
+		t.Fatal("expected missing optional JSON file to return ok=false")
+	}
+}
+
+func TestListReportArtifactsClassifiesUnknownFiles(t *testing.T) {
+	roundDir := t.TempDir()
+	for name, body := range map[string]string{
+		servicereporting.ArtifactRoundSummaryJSON:   "{}\n",
+		servicereporting.ArtifactExecutiveSummaryMD: "# Summary\n",
+		"notes.txt": "plain text\n",
+	} {
+		if err := os.WriteFile(filepath.Join(roundDir, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", name, err)
+		}
+	}
+
+	index := listReportArtifacts("round-kind-check", roundDir)
+	if len(index.Artifacts) != 3 {
+		t.Fatalf("expected 3 artifacts, got %d", len(index.Artifacts))
+	}
+	if got := index.Artifacts[2]; got.Name != "round-summary.json" && got.Kind == "" {
+		t.Fatalf("unexpected artifact listing %#v", index.Artifacts)
+	}
+	kinds := map[string]string{}
+	for _, artifact := range index.Artifacts {
+		kinds[artifact.Name] = artifact.Kind
+	}
+	if kinds["notes.txt"] != "file" || kinds[servicereporting.ArtifactExecutiveSummaryMD] != "markdown" || kinds[servicereporting.ArtifactRoundSummaryJSON] != "json" {
+		t.Fatalf("unexpected kinds %#v", kinds)
+	}
+}
+
+func TestReconstructDetectionResultsMapsHistoricalStatuses(t *testing.T) {
+	round := benchmark.BenchmarkRound{
+		ID:          "round-1",
+		CompletedAt: time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC),
+		ScenarioResults: []benchmark.ScenarioResult{
+			{
+				ID:                   "sr-clean",
+				ScenarioID:           "scenario-clean",
+				DetectionResultRef:   "det-clean",
+				FinalDetectionStatus: detectionmodel.DetectionStatusClean,
+				FinalRecommendation:  detectionmodel.RecommendationAllow,
+			},
+			{
+				ID:                   "sr-blocked",
+				ScenarioID:           "scenario-blocked",
+				DetectionResultRef:   "det-blocked",
+				FinalDetectionStatus: detectionmodel.DetectionStatusBlocked,
+				FinalRecommendation:  detectionmodel.RecommendationBlock,
+				TriggeredRuleIDs:     []string{"missing_mandate_delegated_action"},
+			},
+		},
+	}
+
+	results := reconstructDetectionResults(round)
+	if len(results) != 2 {
+		t.Fatalf("expected 2 reconstructed results, got %d", len(results))
+	}
+	if results[0].Grade != detectionmodel.RiskGradeLow || results[0].Score != 0 {
+		t.Fatalf("expected clean result to stay low-risk, got %#v", results[0])
+	}
+	if results[1].Grade != detectionmodel.RiskGradeCritical || results[1].Score != 80 {
+		t.Fatalf("expected blocked result to reconstruct as critical, got %#v", results[1])
+	}
+}
+
+func TestHistoricalHelpersCoverStatusAndSortFallbacks(t *testing.T) {
+	started := time.Date(2026, 3, 25, 10, 0, 0, 0, time.UTC)
+	completed := started.Add(time.Minute)
+
+	if got := historicalRoundSortKey(benchmark.BenchmarkRound{CompletedAt: completed, StartedAt: started}); !got.Equal(completed) {
+		t.Fatalf("expected completed time to win, got %s", got)
+	}
+	if got := historicalRoundSortKey(benchmark.BenchmarkRound{StartedAt: started}); !got.Equal(started) {
+		t.Fatalf("expected started time fallback, got %s", got)
+	}
+	if got := historicalRoundSortKey(benchmark.BenchmarkRound{}); !got.IsZero() {
+		t.Fatalf("expected zero sort key fallback, got %s", got)
+	}
+
+	cases := []struct {
+		status   detectionmodel.DetectionStatus
+		score    int
+		grade    detectionmodel.RiskGrade
+		severity int
+	}{
+		{status: detectionmodel.DetectionStatusSuspicious, score: 15, grade: detectionmodel.RiskGradeModerate, severity: 10},
+		{status: detectionmodel.DetectionStatusStepUpRequired, score: 40, grade: detectionmodel.RiskGradeHigh, severity: 20},
+		{status: detectionmodel.DetectionStatusBlocked, score: 80, grade: detectionmodel.RiskGradeCritical, severity: 30},
+		{status: detectionmodel.DetectionStatusClean, score: 0, grade: detectionmodel.RiskGradeLow, severity: 0},
+	}
+
+	for _, tc := range cases {
+		if got := historicalScore(tc.status); got != tc.score {
+			t.Fatalf("historicalScore(%s) = %d, want %d", tc.status, got, tc.score)
+		}
+		if got := historicalGrade(tc.status); got != tc.grade {
+			t.Fatalf("historicalGrade(%s) = %s, want %s", tc.status, got, tc.grade)
+		}
+		if got := historicalSeverity(tc.status); got != tc.severity {
+			t.Fatalf("historicalSeverity(%s) = %d, want %d", tc.status, got, tc.severity)
+		}
 	}
 }
 

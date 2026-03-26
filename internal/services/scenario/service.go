@@ -68,6 +68,15 @@ type Service struct {
 	orderRefs map[string]string
 }
 
+const (
+	flowKindPurchase = "purchase"
+	flowKindRefund   = "refund"
+	actorKindHuman   = "human"
+	actorKindAgent   = "agent"
+	entityTypeOrder  = "order"
+	entityTypeRefund = "refund"
+)
+
 func NewService(scenarios ScenarioCatalog, commerce *commerceSvc.Service, events *eventsvc.Service, trust *trustsvc.Service, artifacts TrustArtifactWriter, replay ReplayWriter) *Service {
 	return &Service{
 		scenarios: scenarios,
@@ -98,9 +107,9 @@ func (s *Service) Execute(ctx context.Context, scenarioID string) (ExecutionResu
 
 	var result ExecutionResult
 	switch blueprint.FlowKind {
-	case "purchase":
+	case flowKindPurchase:
 		result, err = s.executePurchase(ctx, item, blueprint)
-	case "refund":
+	case flowKindRefund:
 		result, err = s.executeRefund(ctx, item, blueprint)
 	default:
 		err = fmt.Errorf("scenario %s has unsupported flow kind %s", item.ID, blueprint.FlowKind)
@@ -246,7 +255,7 @@ func (s *Service) executePurchase(ctx context.Context, item domainscenario.Scena
 
 	decision, err := s.trust.RecordDecision(domaintrust.TrustDecision{
 		ID:             decisionID,
-		EntityType:     "order",
+		EntityType:     entityTypeOrder,
 		EntityID:       order.ID,
 		Outcome:        plan.DecisionOutcome,
 		ReasonCodes:    append([]string(nil), plan.DecisionReasonCodes...),
@@ -260,7 +269,7 @@ func (s *Service) executePurchase(ctx context.Context, item domainscenario.Scena
 	}
 
 	eventRefs := make([]string, 0, 6)
-	if plan.DelegationMode != actors.DelegationModeDirectHuman || plan.OrderSubmittedBy == "agent" {
+	if plan.DelegationMode != actors.DelegationModeDirectHuman || plan.OrderSubmittedBy == actorKindAgent {
 		eventRefs = append(eventRefs, s.events.RecordTrust(
 			deterministicID("evt-order-submitted", item.ID),
 			domainevents.TrustEventOrderSubmittedByAgent,
@@ -1015,7 +1024,7 @@ func purchaseBlueprint(profile purchaseProfile) scenarioBlueprint {
 		product = profile.product
 	}
 	return scenarioBlueprint{
-		FlowKind:                "purchase",
+		FlowKind:                flowKindPurchase,
 		Merchant:                merchant,
 		Product:                 product,
 		OrderSubmittedBy:        profile.orderSubmittedBy,
@@ -1062,7 +1071,7 @@ type refundProfile struct {
 func refundBlueprint(profile refundProfile) scenarioBlueprint {
 	world := seedWorld()
 	return scenarioBlueprint{
-		FlowKind:                "refund",
+		FlowKind:                flowKindRefund,
 		Merchant:                world.merchant,
 		Product:                 world.product,
 		OrderSubmittedBy:        profile.orderSubmittedBy,
@@ -1085,7 +1094,7 @@ func refundBlueprint(profile refundProfile) scenarioBlueprint {
 		ReplayReason:            profile.replayReason,
 		SignalContext:           profile.signals,
 		ApprovalActionType:      "refund_request",
-		DecisionEntityType:      "refund",
+		DecisionEntityType:      entityTypeRefund,
 		OrderReason:             profile.reason,
 		TrustDecisionRecordedAt: profile.refundRequestedAt.Add(30 * time.Second),
 	}
@@ -1201,7 +1210,7 @@ func (s *Service) storeResult(result ExecutionResult) {
 }
 
 func actorIDFromKind(world worldSeed, kind string) string {
-	if kind == "agent" {
+	if kind == actorKindAgent {
 		return world.agent.ID
 	}
 	return world.human.ID
