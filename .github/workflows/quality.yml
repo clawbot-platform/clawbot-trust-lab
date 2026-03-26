@@ -77,7 +77,7 @@ jobs:
 
       - name: SonarCloud quality gate
         if: ${{ env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-quality-gate-action
+        uses: SonarSource/sonarqube-quality-gate-action@master
         timeout-minutes: 10
         with:
           pollingTimeoutSec: 600
