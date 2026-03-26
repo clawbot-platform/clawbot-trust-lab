@@ -1,5 +1,9 @@
-# Clawbot Trust Lab Version 2
+# Planned Clawbot Trust Lab Version 2
 ## Enterprise Sidekick for Fraud Teams
+
+This document describes planned future direction, not the currently supported release mode.
+
+Version 1 is the current supported mode of this repository.
 
 ## Purpose
 

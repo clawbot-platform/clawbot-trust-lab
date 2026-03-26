@@ -434,6 +434,56 @@ func TestLoadHistoricalRoundAppliesPersistedRecommendationReport(t *testing.T) {
 	}
 }
 
+func TestLoadHistoricalRoundAcceptsLegacyArrayRecommendationReport(t *testing.T) {
+	reportsDir := t.TempDir()
+	roundID := "round-legacy-array"
+	roundDir := filepath.Join(reportsDir, roundID)
+	if err := os.MkdirAll(roundDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	writeFixtureJSON(t, filepath.Join(roundDir, servicereporting.ArtifactRoundSummaryJSON), benchmark.BenchmarkRound{
+		ID:             roundID,
+		ScenarioFamily: "commerce",
+		Summary: benchmark.RoundSummary{
+			RoundID:             roundID,
+			ScenarioFamily:      "commerce",
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Use as a sidecar beside the existing fraud stack.",
+			RecommendedFollowUp: "Review weak delegated purchase controls.",
+		},
+	})
+	writeFixtureJSON(t, filepath.Join(roundDir, servicereporting.ArtifactRecommendationJSON), []benchmark.Recommendation{{
+		ID:                 "rec-legacy-1",
+		Type:               benchmark.RecommendationTypeRequireProvenanceForDelegatedBuys,
+		LinkedRoundID:      roundID,
+		LinkedScenarioIDs:  []string{"commerce-v1-weakened-provenance"},
+		LinkedPromotionIDs: []string{"promo-1"},
+		Rationale:          "Legacy array-shaped report should still bootstrap.",
+		Priority:           benchmark.RecommendationPriorityHigh,
+		SuggestedAction:    "Require provenance for delegated purchase retries.",
+	}})
+
+	var logs bytes.Buffer
+	round, ok, err := loadHistoricalRound(reportsDir, roundID, slog.New(slog.NewTextHandler(&logs, nil)))
+	if err != nil {
+		t.Fatalf("loadHistoricalRound() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("expected historical round to load")
+	}
+	if len(round.Recommendations) != 1 || round.Recommendations[0].ID != "rec-legacy-1" {
+		t.Fatalf("expected converted legacy recommendations, got %#v", round.Recommendations)
+	}
+	if round.Summary.EvaluationMode != "shadow" || round.Summary.BlockingMode != "recommendation_only" {
+		t.Fatalf("expected summary bridge fields to remain populated, got %#v", round.Summary)
+	}
+	if !strings.Contains(logs.String(), "format=legacy_array") {
+		t.Fatalf("expected legacy format conversion to be logged, got %s", logs.String())
+	}
+}
+
 func TestLoadHistoricalRoundRejectsMalformedOptionalArtifacts(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -468,6 +518,98 @@ func TestLoadHistoricalRoundRejectsMalformedOptionalArtifacts(t *testing.T) {
 				t.Fatal("expected malformed optional artifact to fail round load")
 			}
 		})
+	}
+}
+
+func TestLoadHistoricalStateLoadsMixedRecommendationReportFormats(t *testing.T) {
+	reportsDir := t.TempDir()
+
+	currentRound := benchmark.BenchmarkRound{
+		ID:             "round-current",
+		ScenarioFamily: "commerce",
+		CompletedAt:    time.Date(2026, 3, 25, 14, 0, 0, 0, time.UTC),
+		Summary: benchmark.RoundSummary{
+			RoundID:             "round-current",
+			ScenarioFamily:      "commerce",
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Current object report.",
+			RecommendedFollowUp: "Review current round findings.",
+		},
+	}
+	currentDir := filepath.Join(reportsDir, currentRound.ID)
+	if err := os.MkdirAll(currentDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll(current) error = %v", err)
+	}
+	writeFixtureJSON(t, filepath.Join(currentDir, servicereporting.ArtifactRoundSummaryJSON), currentRound)
+	writeFixtureJSON(t, filepath.Join(currentDir, servicereporting.ArtifactRecommendationJSON), benchmark.RecommendationReport{
+		RoundID:                        currentRound.ID,
+		EvaluationMode:                 "shadow",
+		BlockingMode:                   "recommendation_only",
+		ExistingControlIntegrationNote: "Current object report.",
+		RecommendedFollowUp:            "Review current round findings.",
+		Recommendations: []benchmark.Recommendation{{
+			ID:                "rec-current-1",
+			Type:              benchmark.RecommendationTypeMonitorInShadowMode,
+			LinkedScenarioIDs: []string{"commerce-h1-direct-human-purchase"},
+		}},
+	})
+
+	legacyRound := benchmark.BenchmarkRound{
+		ID:             "round-legacy",
+		ScenarioFamily: "commerce",
+		CompletedAt:    time.Date(2026, 3, 25, 13, 0, 0, 0, time.UTC),
+		Summary: benchmark.RoundSummary{
+			RoundID:             "round-legacy",
+			ScenarioFamily:      "commerce",
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
+			ExistingControlNote: "Legacy array report.",
+			RecommendedFollowUp: "Backfill legacy recommendations.",
+		},
+	}
+	legacyDir := filepath.Join(reportsDir, legacyRound.ID)
+	if err := os.MkdirAll(legacyDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll(legacy) error = %v", err)
+	}
+	writeFixtureJSON(t, filepath.Join(legacyDir, servicereporting.ArtifactRoundSummaryJSON), legacyRound)
+	writeFixtureJSON(t, filepath.Join(legacyDir, servicereporting.ArtifactRecommendationJSON), []benchmark.Recommendation{{
+		ID:                "rec-legacy-1",
+		Type:              benchmark.RecommendationTypeAddToReplayStableSet,
+		LinkedScenarioIDs: []string{"commerce-v1-weakened-provenance"},
+	}})
+
+	malformedDir := filepath.Join(reportsDir, "round-malformed")
+	if err := os.MkdirAll(malformedDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll(malformed) error = %v", err)
+	}
+	writeFixtureJSON(t, filepath.Join(malformedDir, servicereporting.ArtifactRoundSummaryJSON), benchmark.BenchmarkRound{
+		ID:          "round-malformed",
+		CompletedAt: time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC),
+		Summary:     benchmark.RoundSummary{RoundID: "round-malformed", ScenarioFamily: "commerce"},
+	})
+	if err := os.WriteFile(filepath.Join(malformedDir, servicereporting.ArtifactRecommendationJSON), []byte("{not-json"), 0o600); err != nil {
+		t.Fatalf("WriteFile(malformed recommendation report) error = %v", err)
+	}
+
+	var logs bytes.Buffer
+	state := LoadHistoricalState(reportsDir, slog.New(slog.NewTextHandler(&logs, nil)))
+	if len(state.Rounds) != 2 {
+		t.Fatalf("expected 2 valid rounds to load, got %d", len(state.Rounds))
+	}
+
+	got := map[string]benchmark.BenchmarkRound{}
+	for _, round := range state.Rounds {
+		got[round.ID] = round
+	}
+	if len(got["round-current"].Recommendations) != 1 || got["round-current"].Recommendations[0].ID != "rec-current-1" {
+		t.Fatalf("expected current object recommendation report to load, got %#v", got["round-current"].Recommendations)
+	}
+	if len(got["round-legacy"].Recommendations) != 1 || got["round-legacy"].Recommendations[0].ID != "rec-legacy-1" {
+		t.Fatalf("expected legacy array recommendation report to convert, got %#v", got["round-legacy"].Recommendations)
+	}
+	if !strings.Contains(logs.String(), "round-malformed") {
+		t.Fatalf("expected malformed round to be logged, got %s", logs.String())
 	}
 }
 

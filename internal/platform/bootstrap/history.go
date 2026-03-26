@@ -169,11 +169,15 @@ func ensureHistoricalSummaryCounts(round *benchmark.BenchmarkRound) {
 
 func loadHistoricalRecommendationReport(reportsDir, roundID, roundDir string, round *benchmark.BenchmarkRound, logger *slog.Logger) error {
 	reportRelPath := filepath.Join(roundID, servicereporting.ArtifactRecommendationJSON)
-	var report benchmark.RecommendationReport
-	if ok, err := readOptionalJSON(reportsDir, reportRelPath, &report); err != nil {
+	report, format, ok, err := loadRecommendationReport(reportsDir, reportRelPath, round)
+	if err != nil {
 		return fmt.Errorf("read %s: %w", servicereporting.ArtifactRecommendationJSON, err)
-	} else if ok {
+	}
+	if ok {
 		applyRecommendationReport(round, report)
+		if logger != nil {
+			logger.Info("loaded historical recommendation report", "round_id", round.ID, "report_path", filepath.Join(roundDir, servicereporting.ArtifactRecommendationJSON), "format", format)
+		}
 		return nil
 	}
 
@@ -186,6 +190,51 @@ func loadHistoricalRecommendationReport(reportsDir, roundID, roundDir string, ro
 		logger.Info("backfilled historical recommendation report", "round_id", round.ID, "round_dir", roundDir)
 	}
 	return nil
+}
+
+func loadRecommendationReport(rootDir, relPath string, round *benchmark.BenchmarkRound) (benchmark.RecommendationReport, string, bool, error) {
+	body, ok, err := readOptionalJSONBytes(rootDir, relPath)
+	if err != nil || !ok {
+		return benchmark.RecommendationReport{}, "", ok, err
+	}
+
+	report, format, err := parseRecommendationReport(body, round)
+	if err != nil {
+		return benchmark.RecommendationReport{}, "", true, fmt.Errorf("unmarshal %s: %w", filepath.Clean(strings.TrimSpace(relPath)), err)
+	}
+	return report, format, true, nil
+}
+
+func parseRecommendationReport(body []byte, round *benchmark.BenchmarkRound) (benchmark.RecommendationReport, string, error) {
+	var report benchmark.RecommendationReport
+	if err := json.Unmarshal(body, &report); err == nil {
+		return report, "current", nil
+	}
+
+	var recommendations []benchmark.Recommendation
+	if err := json.Unmarshal(body, &recommendations); err == nil {
+		return convertLegacyRecommendations(round, recommendations), "legacy_array", nil
+	}
+
+	return benchmark.RecommendationReport{}, "", fmt.Errorf("unsupported recommendation report format")
+}
+
+func convertLegacyRecommendations(round *benchmark.BenchmarkRound, recommendations []benchmark.Recommendation) benchmark.RecommendationReport {
+	report := benchmark.RecommendationReport{
+		Recommendations: append([]benchmark.Recommendation(nil), recommendations...),
+	}
+	if round == nil {
+		return report
+	}
+
+	summaryRound := *round
+	servicebenchmark.EnsureProductionBridgeSummary(&summaryRound)
+	report.RoundID = summaryRound.ID
+	report.EvaluationMode = summaryRound.Summary.EvaluationMode
+	report.BlockingMode = summaryRound.Summary.BlockingMode
+	report.ExistingControlIntegrationNote = summaryRound.Summary.ExistingControlNote
+	report.RecommendedFollowUp = summaryRound.Summary.RecommendedFollowUp
+	return report
 }
 
 func applyRecommendationReport(round *benchmark.BenchmarkRound, report benchmark.RecommendationReport) {
@@ -213,50 +262,74 @@ func applyRecommendationReport(round *benchmark.BenchmarkRound, report benchmark
 }
 
 func readJSON(rootDir, relPath string, dest any) error {
-	clean := filepath.Clean(strings.TrimSpace(relPath))
-	if clean == "." || clean == "" {
-		return fmt.Errorf("relative path is required")
-	}
-	if filepath.IsAbs(clean) {
-		return fmt.Errorf("absolute paths are not allowed: %q", relPath)
-	}
-	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("path escapes root: %q", relPath)
-	}
-
-	root, err := os.OpenRoot(rootDir)
+	body, err := readJSONBytes(rootDir, relPath)
 	if err != nil {
-		return fmt.Errorf("open bootstrap root %s: %w", rootDir, err)
-	}
-	defer func() { _ = root.Close() }()
-
-	f, err := root.Open(clean)
-	if err != nil {
-		return fmt.Errorf("open %s: %w", clean, err)
-	}
-	defer func() { _ = f.Close() }()
-
-	body, err := io.ReadAll(f)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", clean, err)
+		return err
 	}
 
 	if err := json.Unmarshal(body, dest); err != nil {
-		return fmt.Errorf("unmarshal %s: %w", clean, err)
+		return fmt.Errorf("unmarshal %s: %w", filepath.Clean(strings.TrimSpace(relPath)), err)
 	}
 
 	return nil
 }
 
 func readOptionalJSON(rootDir, relPath string, dest any) (bool, error) {
+	body, ok, err := readOptionalJSONBytes(rootDir, relPath)
+	if err != nil || !ok {
+		return ok, err
+	}
+	if err := json.Unmarshal(body, dest); err != nil {
+		return true, fmt.Errorf("unmarshal %s: %w", filepath.Clean(strings.TrimSpace(relPath)), err)
+	}
+	return true, nil
+}
+
+func readOptionalJSONBytes(rootDir, relPath string) ([]byte, bool, error) {
 	fullPath := filepath.Join(rootDir, relPath)
 	if _, err := os.Stat(fullPath); err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return nil, false, nil
 		}
-		return false, err
+		return nil, false, err
 	}
-	return true, readJSON(rootDir, relPath, dest)
+	body, err := readJSONBytes(rootDir, relPath)
+	if err != nil {
+		return nil, true, err
+	}
+	return body, true, nil
+}
+
+func readJSONBytes(rootDir, relPath string) ([]byte, error) {
+	clean := filepath.Clean(strings.TrimSpace(relPath))
+	if clean == "." || clean == "" {
+		return nil, fmt.Errorf("relative path is required")
+	}
+	if filepath.IsAbs(clean) {
+		return nil, fmt.Errorf("absolute paths are not allowed: %q", relPath)
+	}
+	if clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("path escapes root: %q", relPath)
+	}
+
+	root, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("open bootstrap root %s: %w", rootDir, err)
+	}
+	defer func() { _ = root.Close() }()
+
+	f, err := root.Open(clean)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", clean, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	body, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", clean, err)
+	}
+
+	return body, nil
 }
 
 func listReportArtifacts(roundID string, roundDir string) benchmark.ReportIndex {

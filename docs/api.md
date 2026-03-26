@@ -1,6 +1,17 @@
 # API
 
-Phase 9 keeps the earlier trust/replay APIs, the deterministic commerce-world execution layer, the explainable detection baseline, the Red Queen MVP benchmark loop, and adds production-bridge recommendations, scheduled rounds, and long-run trend summaries.
+This document describes the current Version 1 API surface for `clawbot-trust-lab`.
+
+Version 1 includes:
+
+- the deterministic commerce-world execution layer
+- explainable detection
+- replay-driven benchmark rounds
+- recommendations and reporting
+- operator-facing read APIs
+- scheduled benchmark execution
+
+Planned Version 2 integration behavior is not documented here as current API capability.
 
 ## Demo walkthrough
 

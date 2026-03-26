@@ -1,0 +1,15 @@
+.cache
+.git
+.github
+.idea
+.DS_Store
+.env
+coverage.out
+coverage.html
+node_modules
+validation-output
+reports
+var
+web/coverage
+web/dist
+web/node_modules

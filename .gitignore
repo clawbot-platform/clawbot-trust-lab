@@ -16,3 +16,5 @@ web/test-results/
 web/*.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+validation-output/
+docs/phase*

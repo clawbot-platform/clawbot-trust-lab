@@ -1,0 +1,17 @@
+{
+  "id": "rc-starter-mandate-review-20260326190820",
+  "scenario_id": "starter-mandate-review",
+  "trust_artifact_refs": null,
+  "benchmark_round_ref": "",
+  "outcome_summary": "smoke-run-10",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-starter-mandate-review-20260326190820.json"
+  },
+  "promotion": {
+    "status": "review",
+    "reason": "capacity smoke",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-26T19:08:20.164741Z"
+}

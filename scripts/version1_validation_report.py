@@ -77,6 +77,12 @@ def run_cmd(name: str, cmd: list[str], cwd: Path, timeout: int = 900, env: dict[
         )
 
 
+def run_cmd_text(name: str, cmd: list[str], cwd: Path, timeout: int = 900, env: dict[str, str] | None = None) -> CheckResult:
+    result = run_cmd(name, cmd, cwd, timeout=timeout, env=env)
+    result.kind = "command"
+    return result
+
+
 def http_json(name: str, method: str, url: str, payload: dict[str, Any] | None = None, timeout: int = 30) -> CheckResult:
     data = None
     headers = {"Accept": "application/json"}
@@ -101,6 +107,42 @@ def http_json(name: str, method: str, url: str, payload: dict[str, Any] | None =
                 details=pretty,
                 url=url,
                 metadata={"status": resp.status, "json": parsed},
+            )
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        return CheckResult(
+            name=name,
+            kind="api",
+            passed=False,
+            summary=f"http {e.code}",
+            details=body.strip(),
+            url=url,
+            metadata={"status": e.code},
+        )
+    except Exception as e:
+        return CheckResult(
+            name=name,
+            kind="api",
+            passed=False,
+            summary="request failed",
+            details=str(e),
+            url=url,
+        )
+
+
+def http_text(name: str, url: str, timeout: int = 30) -> CheckResult:
+    req = urllib.request.Request(url, method="GET", headers={"Accept": "*/*"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return CheckResult(
+                name=name,
+                kind="api",
+                passed=200 <= resp.status < 300,
+                summary=f"http {resp.status}",
+                details=body[:12000],
+                url=url,
+                metadata={"status": resp.status},
             )
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -253,7 +295,7 @@ def summarize_trends(result: CheckResult) -> CheckResult:
         "promotions_over_time",
         "replay_pass_rate_over_time",
         "new_blind_spots_discovered",
-        "recommendation_counts",
+        "recommendation_counts_by_type",
     ]
     present = [k for k in keys if k in data]
     missing = [k for k in keys if k not in data]
@@ -355,7 +397,7 @@ def to_markdown(results: list[CheckResult], meta: dict[str, Any]) -> str:
     passed = sum(1 for r in results if r.passed)
     failed = total - passed
     lines = []
-    lines.append("# Phase 9 Validation Report")
+    lines.append("# Clawbot Trust Lab Version 1 Validation Report")
     lines.append("")
     lines.append(f"Generated: {meta['generated_at']}")
     lines.append("")
@@ -405,7 +447,7 @@ def to_html(results: list[CheckResult], meta: dict[str, Any]) -> str:
         </section>
         """)
     return f"""<!doctype html>
-<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Phase 9 Validation Report</title>
+<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Clawbot Trust Lab Version 1 Validation Report</title>
 <style>
 body {{ font-family: Arial, sans-serif; margin: 24px; background: #fafafa; color: #222; }}
 summary, h1, h2 {{ color: #111; }}
@@ -420,7 +462,7 @@ pre {{ background:#111; color:#eee; padding:12px; overflow:auto; border-radius: 
 code {{ background:#f0f0f0; padding: 2px 4px; border-radius: 4px; }}
 </style></head>
 <body>
-<h1>Phase 9 Validation Report</h1>
+<h1>Clawbot Trust Lab Version 1 Validation Report</h1>
 <div>Generated: {html.escape(meta['generated_at'])}</div>
 <div>Repo root: <code>{html.escape(meta['repo_root'])}</code></div>
 <div class=\"stats\">
@@ -433,14 +475,19 @@ code {{ background:#f0f0f0; padding: 2px 4px; border-radius: 4px; }}
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Run Phase 9 validation checks and generate Markdown + HTML reports.")
+    ap = argparse.ArgumentParser(description="Run Clawbot Trust Lab Version 1 validation checks and generate Markdown + HTML reports.")
     ap.add_argument("--repo-root", default=".", help="Path to clawbot-trust-lab repo root")
     ap.add_argument("--api-base", default="http://127.0.0.1:8090", help="Base URL for trust-lab API")
+    ap.add_argument("--ui-base", default="http://127.0.0.1:8091", help="Base URL for the optional operator UI")
+    ap.add_argument("--deployment-mode", choices=["local", "docker"], default="local", help="Validate a local source run or the Docker-based Version 1 stack")
+    ap.add_argument("--compose-file", default="docker-compose.v1.yml", help="Compose file used for Version 1 Docker deployment checks")
+    ap.add_argument("--compose-env-file", default="docker-compose.v1.env", help="Compose env file used for Version 1 Docker deployment checks")
+    ap.add_argument("--skip-compose-checks", action="store_true", help="Skip docker compose checks even when deployment mode is docker")
     ap.add_argument("--skip-backend", action="store_true")
     ap.add_argument("--skip-web", action="store_true")
     ap.add_argument("--skip-api", action="store_true")
     ap.add_argument("--run-round", action="store_true", help="POST a fresh benchmark round during validation")
-    ap.add_argument("--output-dir", default="phase9-validation-output")
+    ap.add_argument("--output-dir", default="version1-validation-output")
     args = ap.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
@@ -452,12 +499,36 @@ def main() -> int:
     # Documentation / contract checks
     results.append(file_exists("README exists", repo_root / "README.md"))
     results.append(file_exists("api.md exists", repo_root / "docs" / "api.md"))
-    results.append(file_exists("phase-9 scenario catalog exists", repo_root / "docs" / "phase-9-scenario-catalog.md"))
+    results.append(file_exists("Version 1 deployment guide exists", repo_root / "docs" / "deploying-clawbot-trust-lab-v1.md"))
+    results.append(file_exists("scenario catalog exists", repo_root / "docs" / "phase-9-scenario-catalog.md"))
+    results.append(text_contains(
+        "README presents Version 1 and planned Version 2 clearly",
+        repo_root / "README.md",
+        ["Version 1", "Docker", "phase9_validation_report.py", "Planned Version 2"],
+    ))
     results.append(text_contains(
         "api.md includes Recommendation / Trend / Scheduler schemas",
         repo_root / "docs" / "api.md",
         ["Recommendation", "TrendSummary", "SchedulerStatus", "SchedulerRunResponse", "legacy aliases", "recommendation-report.json"],
     ))
+    if args.deployment_mode == "docker":
+        results.append(file_exists("Version 1 compose file exists", repo_root / args.compose_file))
+        results.append(file_exists("Version 1 compose env file exists", repo_root / args.compose_env_file))
+        results.append(file_exists("trust-lab Dockerfile exists", repo_root / "deploy" / "docker" / "clawbot-trust-lab.Dockerfile"))
+        results.append(file_exists("operator UI Dockerfile exists", repo_root / "deploy" / "docker" / "operator-ui" / "Dockerfile"))
+
+    if args.deployment_mode == "docker" and not args.skip_compose_checks:
+        compose_env = os.environ.copy()
+        compose_cmd = [
+            "docker",
+            "compose",
+            "--env-file",
+            args.compose_env_file,
+            "-f",
+            args.compose_file,
+            "ps",
+        ]
+        results.append(run_cmd_text("docker compose ps", compose_cmd, repo_root, timeout=120, env=compose_env))
 
     if not args.skip_backend:
         backend_cmds = [
@@ -508,6 +579,8 @@ def main() -> int:
             summarize_trends(http_json("GET /api/v1/operator/trends/summary", "GET", f"{api}/api/v1/operator/trends/summary")),
             summarize_scheduler(http_json("GET /api/v1/benchmark/scheduler/status", "GET", f"{api}/api/v1/benchmark/scheduler/status")),
         ])
+        if args.deployment_mode == "docker":
+            api_checks.append(http_text("GET operator UI root", args.ui_base.rstrip("/") + "/"))
         results.extend(api_checks)
 
     meta = {
@@ -517,10 +590,12 @@ def main() -> int:
 
     md = to_markdown(results, meta)
     html_doc = to_html(results, meta)
-    md_path = out_dir / "phase9-validation-report.md"
-    html_path = out_dir / "phase9-validation-report.html"
+    md_path = out_dir / "version1-validation-report.md"
+    html_path = out_dir / "version1-validation-report.html"
     md_path.write_text(md, encoding="utf-8")
     html_path.write_text(html_doc, encoding="utf-8")
+    (out_dir / "version1-validation-report.md").write_text(md, encoding="utf-8")
+    (out_dir / "version1-validation-report.html").write_text(html_doc, encoding="utf-8")
 
     print(f"Wrote Markdown report: {md_path}")
     print(f"Wrote HTML report: {html_path}")

@@ -14,12 +14,35 @@
 10. Scenario packs are loaded from `configs/scenario-packs/`.
 11. Round reports are written under `reports/<round-id>/`.
 
+## Docker Version 1 workflow
+
+The supported container path is the Version 1 stack in [`docker-compose.v1.yml`](../docker-compose.v1.yml).
+
+It assumes adjacent checkouts of:
+
+- `clawbot-server`
+- `clawbot-trust-lab`
+- `clawmem`
+
+Basic Docker flow:
+
+```bash
+cp docker-compose.v1.env.example docker-compose.v1.env
+docker compose --env-file docker-compose.v1.env -f docker-compose.v1.yml up -d --build
+python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file docker-compose.v1.yml --compose-env-file docker-compose.v1.env --run-round --output-dir ./version1-validation-output
+```
+
 ## Commands
 
 - `make run`
 - `make test`
 - `make lint`
 - `make security`
+- `make docker-build-v1`
+- `make docker-up-v1`
+- `make docker-down-v1`
+- `make docker-ps-v1`
+- `make validate-v1`
 - `make ui-dev`
 - `make ui-build`
 - `make ui-test`

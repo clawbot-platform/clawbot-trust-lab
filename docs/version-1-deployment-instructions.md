@@ -1,5 +1,7 @@
 # Clawbot Trust Lab Version 1
-## Self-Sufficient Red Queen / DRQ Harness for Agentic Commerce Fraud Controls
+## Product Brief
+
+For the actual Docker install and validation walkthrough, use [`deploying-clawbot-trust-lab-v1.md`](./deploying-clawbot-trust-lab-v1.md).
 
 ## Purpose
 
@@ -13,7 +15,7 @@ This version is intended to prove:
 - new evasions can be promoted into replay and retested over time
 - fraud-control regressions can be surfaced through round reports, promotions, trends, and recommendations
 
-Version 1 is the **concept-proving productized demo**.
+Version 1 is the current release mode of the repo.
 
 It is not dependent on an incumbent enterprise data feed.
 It operates using its own built-in scenario catalog, challenger variants, replay loop, and operator workflows.
@@ -221,12 +223,11 @@ The business value comes from the Clawbot domain/control layer built above it:
 ## Deployment model for Version 1
 
 Version 1 can be run:
-- locally
-- in a homelab
-- in an internal lab environment
-- as a self-contained internal demo
+- locally from source
+- in Docker as a self-contained lab stack
+- in a homelab or internal evaluation environment
 
-It does not require enterprise data onboarding to prove value.
+The detailed deployment path is documented in [`deploying-clawbot-trust-lab-v1.md`](./deploying-clawbot-trust-lab-v1.md).
 
 ---
 

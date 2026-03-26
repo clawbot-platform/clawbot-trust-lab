@@ -1,0 +1,17 @@
+{
+  "id": "rc-starter-mandate-review-20260326183911",
+  "scenario_id": "starter-mandate-review",
+  "trust_artifact_refs": null,
+  "benchmark_round_ref": "",
+  "outcome_summary": "Replay matched expected artifact flow",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-starter-mandate-review-20260326183911.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Baseline outcome is explainable",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-26T18:39:11.028491Z"
+}
