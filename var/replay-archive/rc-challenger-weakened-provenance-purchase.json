@@ -1,0 +1,19 @@
+{
+  "id": "rc-challenger-weakened-provenance-purchase",
+  "scenario_id": "commerce-challenger-weakened-provenance-purchase",
+  "trust_artifact_refs": [
+    "ta-challenger-weakened-provenance-purchase"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Delegated purchase remained accepted even though provenance confidence was materially weak.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-challenger-weakened-provenance-purchase.json"
+  },
+  "promotion": {
+    "status": "candidate",
+    "reason": "Weak provenance on delegated purchase remains a meaningful blind-spot probe.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T16:02:45Z"
+}

@@ -17,14 +17,22 @@ func TestLoadAll(t *testing.T) {
   "scenarios": [
     {
       "id": "scenario-1",
+      "code": "H1",
       "name": "Mandate Review",
       "version": "v1",
       "scenario_type": "mandate_review",
+      "family": "commerce",
+      "set_role": "stable",
       "description": "test scenario",
       "actors": ["reviewer"],
       "trust_signals": ["signal-a"],
       "expected_outcomes": ["artifact"],
-      "tags": ["starter"]
+      "tags": ["starter"],
+      "feature_model": {
+        "tier_a": ["psp_amount"],
+        "tier_b": ["historical_refund_count"],
+        "tier_c": ["mandate_status"]
+      }
     }
   ]
 }`
@@ -43,5 +51,14 @@ func TestLoadAll(t *testing.T) {
 	}
 	if packs[0].Scenarios[0].ID != "scenario-1" {
 		t.Fatalf("unexpected scenario payload: %#v", packs[0].Scenarios[0])
+	}
+	if packs[0].Scenarios[0].Code != "H1" {
+		t.Fatalf("expected code H1, got %#v", packs[0].Scenarios[0])
+	}
+	if packs[0].Scenarios[0].SetRole != "stable" {
+		t.Fatalf("expected stable set role, got %#v", packs[0].Scenarios[0].SetRole)
+	}
+	if len(packs[0].Scenarios[0].FeatureModel.TierB) != 1 {
+		t.Fatalf("expected tier model to load, got %#v", packs[0].Scenarios[0].FeatureModel)
 	}
 }

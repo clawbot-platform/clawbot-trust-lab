@@ -17,6 +17,9 @@ type OperatorService interface {
 	GetPromotion(string) (operator.PromotionDetail, error)
 	ReviewPromotion(string, operator.ReviewInput) (benchmark.PromotionReview, error)
 	GetDetectionResult(string) (detectionmodel.DetectionResult, error)
+	ListRecommendations() []benchmark.Recommendation
+	GetRecommendation(string) (benchmark.Recommendation, error)
+	GetTrendSummary() benchmark.LongRunSummary
 	GetReports(string) ([]benchmark.ReportDescriptor, error)
 	GetReportArtifact(string, string) (operator.ReportContent, error)
 }
@@ -90,6 +93,23 @@ func (h *OperatorHandler) GetDetectionResult(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": result})
+}
+
+func (h *OperatorHandler) ListRecommendations(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.operator.ListRecommendations()})
+}
+
+func (h *OperatorHandler) GetRecommendation(w http.ResponseWriter, r *http.Request) {
+	item, err := h.operator.GetRecommendation(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": item})
+}
+
+func (h *OperatorHandler) GetTrendSummary(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.operator.GetTrendSummary()})
 }
 
 func (h *OperatorHandler) GetReports(w http.ResponseWriter, r *http.Request) {

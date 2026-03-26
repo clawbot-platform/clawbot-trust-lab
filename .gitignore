@@ -6,6 +6,7 @@
 .vscode/
 bin/
 coverage.out
+web/coverage/
 reports/*
 !reports/.gitkeep
 web/node_modules/

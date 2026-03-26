@@ -28,6 +28,12 @@ export interface RoundSummary {
   replay_pass_rate: number;
   robustness_outcome: RobustnessOutcome;
   important_findings: string[];
+  evaluation_mode: string;
+  blocking_mode: string;
+  existing_control_integration_note: string;
+  recommended_follow_up: string;
+  recommendations: number;
+  tier_c_usage_count: number;
 }
 
 export interface StableSetResult {
@@ -111,6 +117,7 @@ export interface BenchmarkRound {
   promotion_results: PromotionDecision[];
   delta: DetectionDelta[];
   reports: ReportIndex;
+  recommendations: BenchmarkRecommendation[];
 }
 
 export interface OperatorNote {
@@ -145,6 +152,29 @@ export interface DetectionResult {
   replay_case_refs: string[];
   trust_decision_refs: string[];
   metadata: Record<string, unknown>;
+}
+
+export interface BenchmarkRecommendation {
+  id: string;
+  type: string;
+  rationale: string;
+  priority: string;
+  linked_round_id: string;
+  linked_scenario_ids: string[];
+  linked_promotion_ids?: string[];
+  supporting_rule_ids?: string[];
+  suggested_action: string;
+  existing_control_integration_note?: string;
+}
+
+export interface LongRunSummary {
+  rounds_executed: number;
+  promotions_over_time: Array<{ round_id: string; value: number }>;
+  replay_pass_rate_over_time: Array<{ round_id: string; value: number }>;
+  new_blind_spots_discovered: number;
+  regressions_observed: number;
+  recommendation_counts_by_type: Record<string, number>;
+  top_recurring_evasion_patterns: string[];
 }
 
 export interface PromotionDetail {

@@ -10,7 +10,7 @@ export default defineConfig({
     use: {
         baseURL,
         headless: true,
-        channel: process.env.PLAYWRIGHT_CHANNEL || "chrome",
+        channel: process.env.PLAYWRIGHT_CHANNEL,
         trace: "on-first-retry"
     },
     webServer: process.env.PLAYWRIGHT_BASE_URL

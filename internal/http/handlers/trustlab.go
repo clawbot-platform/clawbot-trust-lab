@@ -43,12 +43,17 @@ type ReplayService interface {
 type BenchmarkService interface {
 	RegisterRound(context.Context, benchmark.RegistrationRequest) (benchmark.RegistrationResult, error)
 	RunRound(context.Context, benchmark.RunInput) (benchmark.BenchmarkRound, error)
+	RunScheduled(context.Context, benchmark.SchedulerControlInput) ([]benchmark.BenchmarkRound, error)
 	ListRounds() []benchmark.BenchmarkRound
 	GetRound(string) (benchmark.BenchmarkRound, error)
 	GetRoundSummary(string) (benchmark.RoundSummary, error)
 	GetRoundPromotions(string) ([]benchmark.PromotionDecision, error)
 	GetRoundDelta(string) ([]benchmark.DetectionDelta, error)
 	GetRoundReports(string) (benchmark.ReportIndex, error)
+	ListRecommendations() []benchmark.Recommendation
+	GetRecommendation(string) (benchmark.Recommendation, error)
+	LongRunSummary() benchmark.LongRunSummary
+	SchedulerStatus() benchmark.SchedulerStatus
 	Status() map[string]any
 }
 
@@ -309,6 +314,45 @@ func (h *TrustLabHandler) GetBenchmarkRoundReports(w http.ResponseWriter, r *htt
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": reports})
+}
+
+func (h *TrustLabHandler) ListBenchmarkRecommendations(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.benchmark.ListRecommendations()})
+}
+
+func (h *TrustLabHandler) GetBenchmarkRecommendation(w http.ResponseWriter, r *http.Request) {
+	item, err := h.benchmark.GetRecommendation(r.PathValue("id"))
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": item})
+}
+
+func (h *TrustLabHandler) GetBenchmarkTrendSummary(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.benchmark.LongRunSummary()})
+}
+
+func (h *TrustLabHandler) GetBenchmarkSchedulerStatus(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"data": h.benchmark.SchedulerStatus()})
+}
+
+func (h *TrustLabHandler) RunBenchmarkScheduler(w http.ResponseWriter, r *http.Request) {
+	var input benchmark.SchedulerControlInput
+	if err := decodeJSON(r, &input); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	items, err := h.benchmark.RunScheduled(r.Context(), input)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"data": map[string]any{
+		"rounds":  items,
+		"status":  h.benchmark.SchedulerStatus(),
+		"summary": h.benchmark.LongRunSummary(),
+	}})
 }
 
 func (h *TrustLabHandler) CreateArtifact(w http.ResponseWriter, r *http.Request) {

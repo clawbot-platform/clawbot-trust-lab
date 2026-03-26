@@ -17,6 +17,13 @@ type RunInput struct {
 	ScenarioFamily string `json:"scenario_family"`
 }
 
+type SchedulerControlInput struct {
+	ScenarioFamily string `json:"scenario_family"`
+	Interval       string `json:"interval,omitempty"`
+	MaxRuns        int    `json:"max_runs,omitempty"`
+	DryRun         bool   `json:"dry_run,omitempty"`
+}
+
 type StableSuiteRef struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
@@ -48,6 +55,8 @@ type RoundStatus string
 type ScenarioSetKind string
 type PromotionReason string
 type RobustnessOutcome string
+type RecommendationType string
+type RecommendationPriority string
 
 const (
 	RoundStatusRunning   RoundStatus = "running"
@@ -73,6 +82,21 @@ const (
 	RobustnessOutcomeMixed                  RobustnessOutcome = "mixed"
 	RobustnessOutcomeRegressed              RobustnessOutcome = "regressed"
 	RobustnessOutcomeNewBlindSpotDiscovered RobustnessOutcome = "new_blind_spot_discovered"
+)
+
+const (
+	RecommendationTypeAddToReplayStableSet              RecommendationType = "add_to_replay_stable_set"
+	RecommendationTypeTightenRefundReviewRule           RecommendationType = "tighten_refund_review_rule"
+	RecommendationTypeRequireStepUpForDelegatedRefunds  RecommendationType = "require_step_up_for_delegated_refunds"
+	RecommendationTypeRequireProvenanceForDelegatedBuys RecommendationType = "require_provenance_for_delegated_purchase"
+	RecommendationTypeInvestigateRepeatRefundPattern    RecommendationType = "investigate_repeat_refund_pattern"
+	RecommendationTypeMonitorInShadowMode               RecommendationType = "monitor_in_shadow_mode"
+)
+
+const (
+	RecommendationPriorityLow      RecommendationPriority = "low"
+	RecommendationPriorityModerate RecommendationPriority = "moderate"
+	RecommendationPriorityHigh     RecommendationPriority = "high"
 )
 
 type ChallengerVariant struct {
@@ -177,6 +201,62 @@ type RoundSummary struct {
 	ReplayPassRate      float64           `json:"replay_pass_rate"`
 	RobustnessOutcome   RobustnessOutcome `json:"robustness_outcome"`
 	ImportantFindings   []string          `json:"important_findings"`
+	EvaluationMode      string            `json:"evaluation_mode"`
+	BlockingMode        string            `json:"blocking_mode"`
+	ExistingControlNote string            `json:"existing_control_integration_note"`
+	RecommendedFollowUp string            `json:"recommended_follow_up"`
+	Recommendations     int               `json:"recommendations"`
+	TierCUsageCount     int               `json:"tier_c_usage_count"`
+}
+
+type Recommendation struct {
+	ID                             string                 `json:"id"`
+	Type                           RecommendationType     `json:"type"`
+	Rationale                      string                 `json:"rationale"`
+	Priority                       RecommendationPriority `json:"priority"`
+	LinkedRoundID                  string                 `json:"linked_round_id"`
+	LinkedScenarioIDs              []string               `json:"linked_scenario_ids"`
+	LinkedPromotionIDs             []string               `json:"linked_promotion_ids,omitempty"`
+	SupportingRuleIDs              []string               `json:"supporting_rule_ids,omitempty"`
+	SuggestedAction                string                 `json:"suggested_action"`
+	ExistingControlIntegrationNote string                 `json:"existing_control_integration_note,omitempty"`
+}
+
+type RecommendationReport struct {
+	RoundID                        string           `json:"round_id"`
+	EvaluationMode                 string           `json:"evaluation_mode"`
+	BlockingMode                   string           `json:"blocking_mode"`
+	ExistingControlIntegrationNote string           `json:"existing_control_integration_note"`
+	RecommendedFollowUp            string           `json:"recommended_follow_up"`
+	Recommendations                []Recommendation `json:"recommendations"`
+}
+
+type LongRunSummary struct {
+	RoundsExecuted         int                        `json:"rounds_executed"`
+	PromotionsOverTime     []MetricPoint              `json:"promotions_over_time"`
+	ReplayPassRateOverTime []MetricPoint              `json:"replay_pass_rate_over_time"`
+	NewBlindSpots          int                        `json:"new_blind_spots_discovered"`
+	RegressionsObserved    int                        `json:"regressions_observed"`
+	RecommendationCounts   map[RecommendationType]int `json:"recommendation_counts_by_type"`
+	TopRecurringPatterns   []string                   `json:"top_recurring_evasion_patterns"`
+}
+
+type MetricPoint struct {
+	RoundID string  `json:"round_id"`
+	Value   float64 `json:"value"`
+}
+
+type SchedulerStatus struct {
+	Enabled        bool      `json:"enabled"`
+	Running        bool      `json:"running"`
+	ScenarioFamily string    `json:"scenario_family"`
+	Interval       string    `json:"interval"`
+	MaxRuns        int       `json:"max_runs"`
+	ExecutedRuns   int       `json:"executed_runs"`
+	DryRun         bool      `json:"dry_run"`
+	LastRoundID    string    `json:"last_round_id,omitempty"`
+	LastStartedAt  time.Time `json:"last_started_at,omitempty"`
+	NextRunAt      time.Time `json:"next_run_at,omitempty"`
 }
 
 type BenchmarkRound struct {
@@ -197,6 +277,7 @@ type BenchmarkRound struct {
 	LivingSet             LivingSetResult     `json:"living_set"`
 	Summary               RoundSummary        `json:"summary"`
 	Reports               ReportIndex         `json:"reports"`
+	Recommendations       []Recommendation    `json:"recommendations"`
 }
 
 type PromotionReviewStatus string

@@ -1,0 +1,19 @@
+{
+  "id": "rc-v3-approval-removed",
+  "scenario_id": "commerce-v3-approval-removed",
+  "trust_artifact_refs": [
+    "ta-v3-approval-removed"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Agent-driven refund lost approval evidence before execution and required step-up.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-v3-approval-removed.json"
+  },
+  "promotion": {
+    "status": "hold",
+    "reason": "Approval-removed refund remains useful for replay regression.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T18:09:30Z"
+}

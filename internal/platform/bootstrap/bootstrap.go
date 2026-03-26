@@ -75,6 +75,13 @@ func Build(cfg config.Config, logger *slog.Logger) (Dependencies, error) {
 	reportingService := servicereporting.NewService(cfg.ReportsDir)
 	benchmarkRegistrationService := benchmark.NewService(controlPlaneClient)
 	benchmarkRoundService := servicebenchmark.NewService(benchmarkRegistrationService, executionService, detectionService, replayService, benchmarkStore, reportingService)
+	benchmarkRoundService.ConfigureScheduler(servicebenchmark.SchedulerConfig{
+		Enabled:        cfg.BenchmarkScheduler.Enabled,
+		ScenarioFamily: cfg.BenchmarkScheduler.ScenarioFamily,
+		Interval:       cfg.BenchmarkScheduler.Interval,
+		MaxRuns:        cfg.BenchmarkScheduler.MaxRuns,
+		DryRun:         cfg.BenchmarkScheduler.DryRun,
+	})
 	operatorService := serviceoperator.NewService(benchmarkRoundService, detectionService, operatorStore)
 
 	return Dependencies{

@@ -1,6 +1,8 @@
 import type {
   BenchmarkRound,
+  BenchmarkRecommendation,
   DetectionResult,
+  LongRunSummary,
   PromotionDetail,
   PromotionRecord,
   PromotionReview,
@@ -42,6 +44,8 @@ export const api = {
       body: JSON.stringify({ status, note })
     }),
   getDetectionResult: (id: string) => request<DetectionResult>(`/api/v1/operator/detection/results/${id}`),
+  listRecommendations: () => request<BenchmarkRecommendation[]>("/api/v1/operator/recommendations"),
+  getTrendSummary: () => request<LongRunSummary>("/api/v1/operator/trends/summary"),
   getReports: (roundId: string) => request<ReportDescriptor[]>(`/api/v1/operator/reports/${roundId}`),
   getReportArtifact: (roundId: string, artifactName: string) =>
     request<ReportContent>(`/api/v1/operator/reports/${roundId}/${encodeURIComponent(artifactName)}`)

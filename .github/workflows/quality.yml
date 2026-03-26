@@ -7,12 +7,66 @@ on:
   pull_request:
 
 jobs:
-  quality:
+  sonar:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Optional govulncheck reminder
-        run: echo "Additional quality automation can be layered here in later phases without changing repo boundaries."
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+      - name: Check formatting
+        run: |
+          fmt_out=$(find cmd internal -name '*.go' -print | xargs gofmt -l)
+          if [ -n "$fmt_out" ]; then
+            echo "$fmt_out"
+            exit 1
+          fi
+      - name: Go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: ./...
+      - name: Go test with coverage
+        run: go test -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Web lint
+        working-directory: web
+        run: npm run lint
+      - name: Web test with coverage
+        working-directory: web
+        run: npm run test:coverage
+      - name: Web build
+        working-directory: web
+        run: npm run build
+      - name: SonarCloud scan
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+      - name: SonarCloud quality gate
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 10
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+      - name: Skip Sonar when token is unavailable
+        if: ${{ secrets.SONAR_TOKEN == '' }}
+        run: echo "Skipping SonarCloud because SONAR_TOKEN is not available for this run."

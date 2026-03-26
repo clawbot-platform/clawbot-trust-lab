@@ -36,6 +36,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	deps.Benchmark.StartScheduler(ctx)
 
 	system := handlers.NewSystemHandler(func(ctx context.Context) error {
 		return bootstrap.Ready(ctx, deps)

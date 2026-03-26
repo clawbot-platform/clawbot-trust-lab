@@ -22,6 +22,8 @@ Historical reconstruction uses these files under `reports/<round-id>/`:
    Optional. Preferred source for historical promotion reconstruction.
 3. `detection-delta.json`
    Optional. Used to enrich reconstructed round delta metadata.
+4. `recommendation-report.json`
+   Generated for current rounds and backfilled for legacy rounds when missing. If present, bootstrap uses it as the structured recommendation source. If absent, bootstrap reconstructs it from `round-summary.json`, `promotion-report.json`, and `detection-delta.json`, then writes it once under the round directory.
 
 Markdown files such as `round-summary.md` and `executive-summary.md` remain first-class report artifacts, but they are not the structured source of truth for round reconstruction.
 
@@ -33,9 +35,15 @@ On startup, trust-lab now:
 2. finds subdirectories that contain `round-summary.json`
 3. loads the stored round metadata
 4. enriches it from `promotion-report.json` and `detection-delta.json` when present
-5. rebuilds report artifact descriptors from the directory listing
-6. reconstructs minimal historical detection results from stored scenario results
-7. loads the reconstructed rounds into the benchmark store as historical state
+5. loads `recommendation-report.json` when it already exists
+6. otherwise reconstructs and backfills `recommendation-report.json` for legacy rounds
+7. rebuilds report artifact descriptors from the directory listing
+8. reconstructs minimal historical detection results from stored scenario results
+9. loads the reconstructed rounds into the benchmark store as historical state
+
+That means the report listing stays consistent across historical and current rounds, and legacy rounds converge toward the same artifact contract as newly generated rounds.
+
+The Phase 9 validation runner mirrors that behavior. If it encounters a pre-backfill legacy round that is missing only `recommendation-report.json` but still has enough persisted round data for deterministic reconstruction, it reports that as an explicit legacy reconstructible case rather than a silent artifact-consistency failure.
 
 Malformed report directories are skipped with explicit logging. One bad report directory does not fail the whole service.
 

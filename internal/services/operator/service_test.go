@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -35,6 +36,27 @@ func (s benchmarkStub) GetRoundReports(id string) (domainbenchmark.ReportIndex, 
 		return domainbenchmark.ReportIndex{}, err
 	}
 	return item.Reports, nil
+}
+
+func (s benchmarkStub) ListRecommendations() []domainbenchmark.Recommendation {
+	items := make([]domainbenchmark.Recommendation, 0)
+	for _, round := range s.rounds {
+		items = append(items, round.Recommendations...)
+	}
+	return items
+}
+
+func (s benchmarkStub) GetRecommendation(id string) (domainbenchmark.Recommendation, error) {
+	for _, item := range s.ListRecommendations() {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+	return domainbenchmark.Recommendation{}, errNotFound("recommendation", id)
+}
+
+func (s benchmarkStub) LongRunSummary() domainbenchmark.LongRunSummary {
+	return domainbenchmark.LongRunSummary{RoundsExecuted: len(s.rounds)}
 }
 
 type detectionStub struct {
@@ -113,8 +135,52 @@ func TestListPromotionsIncludesHistoricalRoundsWithoutInventingReviewState(t *te
 	}
 }
 
+func TestGetReportsAndArtifact(t *testing.T) {
+	service := NewService(benchmarkStub{rounds: operatorRoundsFixture(t)}, detectionStub{results: operatorDetectionsFixture()}, store.NewOperatorStore())
+
+	reports, err := service.GetReports("round-2")
+	if err != nil {
+		t.Fatalf("GetReports() error = %v", err)
+	}
+	if len(reports) != 1 || reports[0].ArtifactName != "executive-summary.md" {
+		t.Fatalf("unexpected reports %#v", reports)
+	}
+
+	artifact, err := service.GetReportArtifact("round-2", "executive-summary.md")
+	if err != nil {
+		t.Fatalf("GetReportArtifact() error = %v", err)
+	}
+	if artifact.Content == "" {
+		t.Fatal("expected report content")
+	}
+}
+
+func TestRecommendationsAndTrendSummary(t *testing.T) {
+	service := NewService(benchmarkStub{rounds: operatorRoundsFixture(t)}, detectionStub{results: operatorDetectionsFixture()}, store.NewOperatorStore())
+
+	recommendations := service.ListRecommendations()
+	if len(recommendations) != 1 {
+		t.Fatalf("expected 1 recommendation, got %d", len(recommendations))
+	}
+
+	recommendation, err := service.GetRecommendation("rec-round-2-replay")
+	if err != nil {
+		t.Fatalf("GetRecommendation() error = %v", err)
+	}
+	if recommendation.LinkedRoundID != "round-2" {
+		t.Fatalf("unexpected recommendation %#v", recommendation)
+	}
+
+	summary := service.GetTrendSummary()
+	if summary.RoundsExecuted != 2 {
+		t.Fatalf("expected 2 executed rounds, got %d", summary.RoundsExecuted)
+	}
+}
+
 func operatorRoundsFixture(t *testing.T) map[string]domainbenchmark.BenchmarkRound {
 	t.Helper()
+	roundOneReport := writeTempReport(t, "round-1", "executive-summary.md", "# Round 1\n")
+	roundTwoReport := writeTempReport(t, "round-2", "executive-summary.md", "# Round 2\n")
 	return map[string]domainbenchmark.BenchmarkRound{
 		"round-1": {
 			ID: "round-1",
@@ -128,7 +194,7 @@ func operatorRoundsFixture(t *testing.T) map[string]domainbenchmark.BenchmarkRou
 			Reports: domainbenchmark.ReportIndex{
 				RoundID: "round-1",
 				Artifacts: []domainbenchmark.ReportArtifact{
-					{Name: "executive-summary.md", Path: t.TempDir() + "/executive-summary.md", Kind: "markdown"},
+					{Name: "executive-summary.md", Path: roundOneReport, Kind: "markdown"},
 				},
 			},
 		},
@@ -157,11 +223,27 @@ func operatorRoundsFixture(t *testing.T) map[string]domainbenchmark.BenchmarkRou
 			Reports: domainbenchmark.ReportIndex{
 				RoundID: "round-2",
 				Artifacts: []domainbenchmark.ReportArtifact{
-					{Name: "executive-summary.md", Path: t.TempDir() + "/executive-summary.md", Kind: "markdown"},
+					{Name: "executive-summary.md", Path: roundTwoReport, Kind: "markdown"},
 				},
 			},
+			Recommendations: []domainbenchmark.Recommendation{{
+				ID:                "rec-round-2-replay",
+				Type:              domainbenchmark.RecommendationTypeAddToReplayStableSet,
+				LinkedRoundID:     "round-2",
+				LinkedScenarioIDs: []string{"commerce-challenger-weakened-provenance-purchase"},
+				SuggestedAction:   "Add the promoted case into replay.",
+			}},
 		},
 	}
+}
+
+func writeTempReport(t *testing.T, roundID string, name string, content string) string {
+	t.Helper()
+	path := t.TempDir() + "/" + roundID + "-" + name
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	return path
 }
 
 func operatorDetectionsFixture() map[string]detectionmodel.DetectionResult {

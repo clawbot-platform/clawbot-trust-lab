@@ -14,6 +14,8 @@ import (
 
 	"clawbot-trust-lab/internal/domain/benchmark"
 	detectionmodel "clawbot-trust-lab/internal/domain/detection"
+	servicebenchmark "clawbot-trust-lab/internal/services/benchmark"
+	servicereporting "clawbot-trust-lab/internal/services/reporting"
 )
 
 type HistoricalState struct {
@@ -45,7 +47,7 @@ func LoadHistoricalState(reportsDir string, logger *slog.Logger) HistoricalState
 		roundID := entry.Name()
 		roundDir := filepath.Join(reportsDir, roundID)
 
-		round, ok, err := loadHistoricalRound(reportsDir, roundID)
+		round, ok, err := loadHistoricalRound(reportsDir, roundID, logger)
 		if err != nil {
 			logger.Warn("skipping malformed historical round directory", "round_dir", roundDir, "error", err)
 			continue
@@ -70,7 +72,7 @@ func LoadHistoricalState(reportsDir string, logger *slog.Logger) HistoricalState
 	return state
 }
 
-func loadHistoricalRound(reportsDir, roundID string) (benchmark.BenchmarkRound, bool, error) {
+func loadHistoricalRound(reportsDir, roundID string, logger *slog.Logger) (benchmark.BenchmarkRound, bool, error) {
 	roundDir := filepath.Join(reportsDir, roundID)
 	summaryRelPath := filepath.Join(roundID, "round-summary.json")
 
@@ -90,7 +92,6 @@ func loadHistoricalRound(reportsDir, roundID string) (benchmark.BenchmarkRound, 
 		round.ID = roundID
 	}
 	round.ReportDir = roundDir
-	round.Reports = listReportArtifacts(round.ID, roundDir)
 	round.Summary.RoundID = round.ID
 	if round.Summary.ScenarioFamily == "" {
 		round.Summary.ScenarioFamily = round.ScenarioFamily
@@ -133,7 +134,53 @@ func loadHistoricalRound(reportsDir, roundID string) (benchmark.BenchmarkRound, 
 		round.Summary.ChallengerCount = len(round.ChallengerVariantRefs)
 	}
 
+	reportRelPath := filepath.Join(roundID, "recommendation-report.json")
+	var report benchmark.RecommendationReport
+	if ok, err := readOptionalJSON(reportsDir, reportRelPath, &report); err != nil {
+		return benchmark.BenchmarkRound{}, false, fmt.Errorf("read recommendation-report.json: %w", err)
+	} else if ok {
+		applyRecommendationReport(&round, report)
+	} else {
+		servicebenchmark.EnsureProductionBridgeSummary(&round)
+		if written, err := servicereporting.BackfillRecommendationReport(roundDir, round); err != nil {
+			if logger != nil {
+				logger.Warn("historical recommendation report backfill failed", "round_id", round.ID, "round_dir", roundDir, "error", err)
+			}
+		} else if written && logger != nil {
+			logger.Info("backfilled historical recommendation report", "round_id", round.ID, "round_dir", roundDir)
+		}
+	}
+
+	round.Reports = listReportArtifacts(round.ID, roundDir)
+	if round.Reports.RoundID == "" {
+		round.Reports.RoundID = round.ID
+	}
+
 	return round, true, nil
+}
+
+func applyRecommendationReport(round *benchmark.BenchmarkRound, report benchmark.RecommendationReport) {
+	if round == nil {
+		return
+	}
+	if len(round.Recommendations) == 0 && len(report.Recommendations) > 0 {
+		round.Recommendations = append([]benchmark.Recommendation(nil), report.Recommendations...)
+	}
+	if round.Summary.EvaluationMode == "" {
+		round.Summary.EvaluationMode = report.EvaluationMode
+	}
+	if round.Summary.BlockingMode == "" {
+		round.Summary.BlockingMode = report.BlockingMode
+	}
+	if round.Summary.ExistingControlNote == "" {
+		round.Summary.ExistingControlNote = report.ExistingControlIntegrationNote
+	}
+	if round.Summary.RecommendedFollowUp == "" {
+		round.Summary.RecommendedFollowUp = report.RecommendedFollowUp
+	}
+	if round.Summary.Recommendations == 0 && len(round.Recommendations) > 0 {
+		round.Summary.Recommendations = len(round.Recommendations)
+	}
 }
 
 func readJSON(rootDir, relPath string, dest any) error {

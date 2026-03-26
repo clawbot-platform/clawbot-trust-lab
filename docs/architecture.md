@@ -7,7 +7,7 @@
 - `clawbot-server` provides the shared foundation and control-plane APIs
 - `clawmem` provides persistent memory-oriented APIs for trust and replay summaries
 
-## Phase 2 through Phase 7 topology
+## Phase 2 through Phase 9 topology
 
 The runtime stays intentionally small:
 
@@ -18,7 +18,9 @@ The runtime stays intentionally small:
 - a scenario-pack loader
 - a deterministic scenario execution layer
 - a deterministic benchmark-round runner
+- a bounded local benchmark scheduler for multi-day demo runs
 - a lightweight reporting layer
+- a recommendation layer that stays in shadow-mode / recommendation-only posture
 - a small in-memory commerce world store
 - a file-backed replay archive store
 - local trust artifact storage for the trust-lab API surface
@@ -32,6 +34,7 @@ The runtime stays intentionally small:
 4. Scenario execution creates a trust artifact and replay case, which in turn write memory records to `clawmem`.
 5. Phase 6 detection APIs evaluate the resulting world state.
 6. Phase 7 benchmark APIs run stable scenarios, challenger variants, and replay regression cases, then emit report artifacts under `reports/<round-id>/`.
+7. Phase 9 recommendations and long-run summaries aggregate round history into operator-facing production-bridge outputs.
 
 Write failures to `clawmem` are treated as request failures. Status enrichment is best-effort and reports degraded memory context rather than failing the whole status endpoint.
 
@@ -43,6 +46,13 @@ These phases together create the baseline loop that later phases will use for:
 - benchmark rounds against stable and suspicious flows
 - replay-backed investigation
 - Red Queen style mutation and adaptation
+
+Phase 9 makes the loop easier to adopt in practice by framing it as a sidecar:
+
+- `evaluation_mode = shadow`
+- `blocking_mode = recommendation_only`
+- ordinary Tier A and Tier B commerce data are sufficient
+- Tier C agentic overlays improve differentiation but remain optional
 
 ## Boundary decisions
 

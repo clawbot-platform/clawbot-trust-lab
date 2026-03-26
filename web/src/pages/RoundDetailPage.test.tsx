@@ -16,6 +16,8 @@ test("round detail renders summary metrics and comparison deltas", async () => {
   expect(screen.getByText("2/3")).toBeInTheDocument();
   expect(screen.getByText("0.67")).toBeInTheDocument();
   expect(screen.getByText("commerce-suspicious-refund-attempt")).toBeInTheDocument();
+  expect(screen.getByText("recommendation_only")).toBeInTheDocument();
+  expect(screen.getByText("add_to_replay_stable_set")).toBeInTheDocument();
 
   fireEvent.change(screen.getByRole("combobox", { name: "Previous round" }), {
     target: { value: previousRound.id }

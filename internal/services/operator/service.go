@@ -15,6 +15,9 @@ type BenchmarkReader interface {
 	ListRounds() []domainbenchmark.BenchmarkRound
 	GetRound(string) (domainbenchmark.BenchmarkRound, error)
 	GetRoundReports(string) (domainbenchmark.ReportIndex, error)
+	ListRecommendations() []domainbenchmark.Recommendation
+	GetRecommendation(string) (domainbenchmark.Recommendation, error)
+	LongRunSummary() domainbenchmark.LongRunSummary
 }
 
 type DetectionReader interface {
@@ -219,6 +222,18 @@ func (s *Service) GetReportArtifact(roundID string, artifactName string) (Report
 		}, nil
 	}
 	return ReportContent{}, fmt.Errorf("report artifact %s for round %s not found", artifactName, roundID)
+}
+
+func (s *Service) ListRecommendations() []domainbenchmark.Recommendation {
+	return s.benchmark.ListRecommendations()
+}
+
+func (s *Service) GetRecommendation(id string) (domainbenchmark.Recommendation, error) {
+	return s.benchmark.GetRecommendation(id)
+}
+
+func (s *Service) GetTrendSummary() domainbenchmark.LongRunSummary {
+	return s.benchmark.LongRunSummary()
 }
 
 func parseReviewStatus(value string) (domainbenchmark.PromotionReviewStatus, error) {

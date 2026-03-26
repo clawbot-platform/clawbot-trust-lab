@@ -1,0 +1,19 @@
+{
+  "id": "rc-v5-repeat-attempt-escalation",
+  "scenario_id": "commerce-v5-repeat-attempt-escalation",
+  "trust_artifact_refs": [
+    "ta-v5-repeat-attempt-escalation"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Repeat refund attempts escalated concern even before any exotic agentic overlay fields were needed.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-v5-repeat-attempt-escalation.json"
+  },
+  "promotion": {
+    "status": "candidate",
+    "reason": "Repeat attempt escalation is a production-adjacent sidecar recommendation case.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T21:06:30Z"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "rc-a1-agent-assisted-purchase-valid-controls",
+  "scenario_id": "commerce-a1-agent-assisted-purchase-valid-controls",
+  "trust_artifact_refs": [
+    "ta-a1-agent-assisted-purchase-valid-controls"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Agent-assisted purchase completed with valid controls and strong provenance.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-a1-agent-assisted-purchase-valid-controls.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Valid agent-assisted baseline should remain in stable replay.",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-25T11:02:45Z"
+}

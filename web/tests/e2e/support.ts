@@ -3,7 +3,9 @@ import {
   currentRound,
   executiveSummaryReport,
   previousRound,
+  promotionRecords,
   promotionDetail,
+  recommendations,
   reportDescriptors,
   roundComparison,
   roundSummaryReport
@@ -49,10 +51,13 @@ export async function mockOperatorApi(page: Page) {
     }
 
     if (pathname === "/api/v1/operator/promotions" && request.method() === "GET") {
-      return fulfill(route, [
-        {
-          round_id: promotionDetail.round_id,
-          promotion: promotionDetail.promotion,
+      return fulfill(route, promotionRecords.map((item) => {
+        if (item.promotion.id !== promotionDetail.promotion.id) {
+          return item;
+        }
+        return {
+          round_id: item.round_id,
+          promotion: item.promotion,
           review: {
             promotion_id: promotionDetail.promotion.id,
             status: reviewState.status,
@@ -65,8 +70,8 @@ export async function mockOperatorApi(page: Page) {
               : undefined,
             updated_at: reviewState.updatedAt
           }
-        }
-      ]);
+        };
+      }));
     }
 
     if (pathname === `/api/v1/operator/promotions/${promotionDetail.promotion.id}` && request.method() === "GET") {
@@ -85,6 +90,10 @@ export async function mockOperatorApi(page: Page) {
           updated_at: reviewState.updatedAt
         }
       });
+    }
+
+    if (pathname === "/api/v1/operator/recommendations" && request.method() === "GET") {
+      return fulfill(route, recommendations);
     }
 
     if (pathname === `/api/v1/operator/promotions/${promotionDetail.promotion.id}/review` && request.method() === "POST") {

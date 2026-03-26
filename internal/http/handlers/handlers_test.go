@@ -122,13 +122,26 @@ func (benchmarkServiceStub) RunRound(_ context.Context, _ benchmark.RunInput) (b
 			PromotionCount:      1,
 			ReplayPassRate:      1,
 			RobustnessOutcome:   benchmark.RobustnessOutcomeNewBlindSpotDiscovered,
+			EvaluationMode:      "shadow",
+			BlockingMode:        "recommendation_only",
 		},
 		Reports: benchmark.ReportIndex{
 			RoundID:   "round-20260325120000",
 			Directory: "./reports/round-20260325120000",
 			Artifacts: []benchmark.ReportArtifact{{Name: "round-summary.json", Path: "./reports/round-20260325120000/round-summary.json", Kind: "json"}},
 		},
+		Recommendations: []benchmark.Recommendation{{
+			ID:                "rec-round-20260325120000-replay",
+			Type:              benchmark.RecommendationTypeAddToReplayStableSet,
+			LinkedRoundID:     "round-20260325120000",
+			LinkedScenarioIDs: []string{"commerce-challenger-weakened-provenance-purchase"},
+			SuggestedAction:   "Add the promoted case into replay.",
+		}},
 	}, nil
+}
+func (benchmarkServiceStub) RunScheduled(_ context.Context, _ benchmark.SchedulerControlInput) ([]benchmark.BenchmarkRound, error) {
+	item, _ := benchmarkServiceStub{}.RunRound(context.Background(), benchmark.RunInput{ScenarioFamily: "commerce"})
+	return []benchmark.BenchmarkRound{item}, nil
 }
 func (benchmarkServiceStub) ListRounds() []benchmark.BenchmarkRound {
 	items, _ := benchmarkServiceStub{}.RunRound(context.Background(), benchmark.RunInput{ScenarioFamily: "commerce"})
@@ -169,8 +182,27 @@ func (benchmarkServiceStub) GetRoundReports(id string) (benchmark.ReportIndex, e
 	}
 	return item.Reports, nil
 }
+func (benchmarkServiceStub) ListRecommendations() []benchmark.Recommendation {
+	item, _ := benchmarkServiceStub{}.RunRound(context.Background(), benchmark.RunInput{ScenarioFamily: "commerce"})
+	return item.Recommendations
+}
+func (benchmarkServiceStub) GetRecommendation(id string) (benchmark.Recommendation, error) {
+	items := benchmarkServiceStub{}.ListRecommendations()
+	for _, item := range items {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+	return benchmark.Recommendation{}, errors.New("recommendation not found")
+}
+func (benchmarkServiceStub) LongRunSummary() benchmark.LongRunSummary {
+	return benchmark.LongRunSummary{RoundsExecuted: 1, NewBlindSpots: 1}
+}
+func (benchmarkServiceStub) SchedulerStatus() benchmark.SchedulerStatus {
+	return benchmark.SchedulerStatus{Enabled: true, ScenarioFamily: "commerce", Interval: "24h", MaxRuns: 7}
+}
 func (benchmarkServiceStub) Status() map[string]any {
-	return map[string]any{"registrations": 1, "last_status": "accepted_stub"}
+	return map[string]any{"registrations": 1, "last_status": "accepted_stub", "scheduler": benchmark.SchedulerStatus{Enabled: true}}
 }
 
 type commerceServiceStub struct {
@@ -340,6 +372,29 @@ func (s operatorServiceStub) GetDetectionResult(id string) (detectionmodel.Detec
 		ScenarioID: "commerce-challenger-weakened-provenance-purchase",
 		Status:     detectionmodel.DetectionStatusClean,
 	}, nil
+}
+
+func (s operatorServiceStub) ListRecommendations() []benchmark.Recommendation {
+	return []benchmark.Recommendation{{
+		ID:                "rec-round-20260325120000-replay",
+		Type:              benchmark.RecommendationTypeAddToReplayStableSet,
+		LinkedRoundID:     "round-20260325120000",
+		LinkedScenarioIDs: []string{"commerce-challenger-weakened-provenance-purchase"},
+		SuggestedAction:   "Add the promoted case into replay.",
+	}}
+}
+
+func (s operatorServiceStub) GetRecommendation(id string) (benchmark.Recommendation, error) {
+	for _, item := range s.ListRecommendations() {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+	return benchmark.Recommendation{}, errors.New("recommendation not found")
+}
+
+func (s operatorServiceStub) GetTrendSummary() benchmark.LongRunSummary {
+	return benchmark.LongRunSummary{RoundsExecuted: 2, NewBlindSpots: 1}
 }
 
 func (s operatorServiceStub) GetReports(roundID string) ([]benchmark.ReportDescriptor, error) {
@@ -525,6 +580,36 @@ func TestTrustLabHandlerGetBenchmarkRoundReports(t *testing.T) {
 	}
 }
 
+func TestTrustLabHandlerListBenchmarkRecommendations(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/benchmark/recommendations", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ListBenchmarkRecommendations(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"add_to_replay_stable_set"`)) {
+		t.Fatalf("expected recommendation payload in body: %s", recorder.Body.String())
+	}
+}
+
+func TestTrustLabHandlerGetBenchmarkTrendSummary(t *testing.T) {
+	handler := newHandler()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/benchmark/trends/summary", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.GetBenchmarkTrendSummary(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"rounds_executed":1`)) {
+		t.Fatalf("expected trend summary in body: %s", recorder.Body.String())
+	}
+}
+
 func TestTrustLabHandlerEvaluateDetection(t *testing.T) {
 	handler := newHandler()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/detection/evaluate", bytes.NewBufferString(`{"scenario_id":"commerce-suspicious-refund-attempt"}`))
@@ -609,6 +694,21 @@ func TestOperatorHandlerGetReportArtifact(t *testing.T) {
 	}
 	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"# Executive Summary"`)) {
 		t.Fatalf("expected report content in body: %s", recorder.Body.String())
+	}
+}
+
+func TestOperatorHandlerGetTrendSummary(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/operator/trends/summary", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.GetTrendSummary(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+	if !bytes.Contains(recorder.Body.Bytes(), []byte(`"rounds_executed":2`)) {
+		t.Fatalf("expected operator trend summary in body: %s", recorder.Body.String())
 	}
 }
 

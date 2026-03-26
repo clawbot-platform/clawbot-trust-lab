@@ -1,0 +1,19 @@
+{
+  "id": "rc-s3-approval-removed-after-authorization",
+  "scenario_id": "commerce-s3-approval-removed-after-authorization",
+  "trust_artifact_refs": [
+    "ta-s3-approval-removed-after-authorization"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Agent-driven refund lost approval evidence before execution and required step-up.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-s3-approval-removed-after-authorization.json"
+  },
+  "promotion": {
+    "status": "hold",
+    "reason": "Approval-removed refund remains useful for replay regression.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T18:09:30Z"
+}

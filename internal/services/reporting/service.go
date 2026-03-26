@@ -33,12 +33,14 @@ func (s *Service) Generate(round benchmark.BenchmarkRound) (benchmark.ReportInde
 
 	executive := s.executiveSummary(round)
 	summaryMD := s.roundSummaryMarkdown(round)
+	recommendationReport := BuildRecommendationReport(round)
 
 	artifacts := []artifact{
 		{name: "round-summary.json", kind: "json", payload: round},
 		{name: "round-summary.md", kind: "markdown", body: summaryMD},
 		{name: "detection-delta.json", kind: "json", payload: round.Delta},
 		{name: "promotion-report.json", kind: "json", payload: round.PromotionResults},
+		{name: "recommendation-report.json", kind: "json", payload: recommendationReport},
 		{name: "executive-summary.md", kind: "markdown", body: executive},
 	}
 
@@ -71,6 +73,32 @@ func (s *Service) Generate(round benchmark.BenchmarkRound) (benchmark.ReportInde
 	return index, nil
 }
 
+func BuildRecommendationReport(round benchmark.BenchmarkRound) benchmark.RecommendationReport {
+	return benchmark.RecommendationReport{
+		RoundID:                        round.ID,
+		EvaluationMode:                 round.Summary.EvaluationMode,
+		BlockingMode:                   round.Summary.BlockingMode,
+		ExistingControlIntegrationNote: round.Summary.ExistingControlNote,
+		RecommendedFollowUp:            round.Summary.RecommendedFollowUp,
+		Recommendations:                append([]benchmark.Recommendation(nil), round.Recommendations...),
+	}
+}
+
+func BackfillRecommendationReport(reportDir string, round benchmark.BenchmarkRound) (bool, error) {
+	path := filepath.Join(reportDir, "recommendation-report.json")
+	if _, err := os.Stat(path); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("stat report %s: %w", path, err)
+	}
+
+	if err := writeJSON(path, BuildRecommendationReport(round)); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (s *Service) roundSummaryMarkdown(round benchmark.BenchmarkRound) string {
 	var builder strings.Builder
 
@@ -83,6 +111,9 @@ func (s *Service) roundSummaryMarkdown(round benchmark.BenchmarkRound) string {
 	fmt.Fprintf(&builder, "- Promotions: `%d`\n", round.Summary.PromotionCount)
 	fmt.Fprintf(&builder, "- Replay pass rate: `%.2f`\n", round.Summary.ReplayPassRate)
 	fmt.Fprintf(&builder, "- Robustness outcome: `%s`\n\n", round.Summary.RobustnessOutcome)
+	fmt.Fprintf(&builder, "- Evaluation mode: `%s`\n", round.Summary.EvaluationMode)
+	fmt.Fprintf(&builder, "- Blocking mode: `%s`\n\n", round.Summary.BlockingMode)
+	fmt.Fprintf(&builder, "Production-bridge note: %s\n\n", round.Summary.ExistingControlNote)
 
 	fmt.Fprintf(&builder, "## Important Findings\n\n")
 	if len(round.Summary.ImportantFindings) == 0 {
@@ -101,6 +132,24 @@ func (s *Service) roundSummaryMarkdown(round benchmark.BenchmarkRound) string {
 			fmt.Fprintf(&builder, "- `%s`: %s\n", item.ScenarioID, item.Rationale)
 		}
 	}
+
+	fmt.Fprintf(&builder, "\n## Recommendations\n\n")
+	if len(round.Recommendations) == 0 {
+		fmt.Fprintf(&builder, "- No explicit recommendations were generated.\n")
+	} else {
+		for _, item := range round.Recommendations {
+			fmt.Fprintf(&builder, "- `%s` (`%s`): %s\n", item.Type, item.Priority, item.SuggestedAction)
+			fmt.Fprintf(&builder, "  Rationale: %s\n", item.Rationale)
+			if len(item.LinkedScenarioIDs) > 0 {
+				fmt.Fprintf(&builder, "  Linked scenarios: `%s`\n", strings.Join(item.LinkedScenarioIDs, "`, `"))
+			}
+			if len(item.LinkedPromotionIDs) > 0 {
+				fmt.Fprintf(&builder, "  Linked promotions: `%s`\n", strings.Join(item.LinkedPromotionIDs, "`, `"))
+			}
+		}
+	}
+
+	fmt.Fprintf(&builder, "\nRecommended follow-up: %s\n", round.Summary.RecommendedFollowUp)
 
 	return builder.String()
 }
@@ -140,9 +189,12 @@ func (s *Service) executiveSummary(round benchmark.BenchmarkRound) string {
 
 	fmt.Fprintf(
 		&builder,
-		"\nRecommended next action: review %d promoted cases and compare the new delta report against the previous round.\n",
-		len(round.PromotionResults),
+		"\nOperating posture: `%s` / `%s`.\n\nRecommended next action: %s\n",
+		round.Summary.EvaluationMode,
+		round.Summary.BlockingMode,
+		round.Summary.RecommendedFollowUp,
 	)
+	fmt.Fprintf(&builder, "\nExisting control integration note: %s\n", round.Summary.ExistingControlNote)
 
 	return builder.String()
 }

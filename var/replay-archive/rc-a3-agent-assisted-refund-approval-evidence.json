@@ -1,0 +1,19 @@
+{
+  "id": "rc-a3-agent-assisted-refund-approval-evidence",
+  "scenario_id": "commerce-a3-agent-assisted-refund-approval-evidence",
+  "trust_artifact_refs": [
+    "ta-a3-agent-assisted-refund-approval-evidence"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Agent-assisted refund completed with approval evidence and valid delegated controls.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-a3-agent-assisted-refund-approval-evidence.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Approved delegated refund baseline should remain replayable.",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-25T13:12:30Z"
+}

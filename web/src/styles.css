@@ -204,6 +204,43 @@ textarea {
   flex-wrap: wrap;
 }
 
+.toolbar,
+.table-actions,
+.pager,
+.item-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.list-item-stack {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.table-actions {
+  justify-content: flex-end;
+}
+
+.pager {
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.pager-button {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+}
+
+.pager-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .pill,
 .chip {
   display: inline-flex;

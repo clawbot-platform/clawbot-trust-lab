@@ -50,9 +50,14 @@ export function PromotionDetailPage() {
           <p className="eyebrow">Promotion Explorer</p>
           <h2>{detail.promotion.scenario_id}</h2>
         </div>
-        <Link className="button-link" to={`/reports/${detail.round_id}`}>
-          View Reports
-        </Link>
+        <div className="toolbar">
+          <Link className="button-link" to={`/rounds/${detail.round_id}`}>
+            View Round
+          </Link>
+          <Link className="button-link" to={`/reports/${detail.round_id}`}>
+            View Reports
+          </Link>
+        </div>
       </header>
 
       {error ? <p className="error-text">{error}</p> : null}
@@ -77,12 +82,18 @@ export function PromotionDetailPage() {
         </div>
         <p className="meta-line">Replay refs: {detail.detection_result.replay_case_refs.join(", ") || "none"}</p>
         <p className="meta-line">Trust refs: {detail.detection_result.trust_decision_refs.join(", ") || "none"}</p>
+        <p className="meta-line">
+          Tier C used: {String(((detail.detection_result.metadata?.tier_profile as { tier_c_used?: boolean } | undefined)?.tier_c_used) ?? false)}
+        </p>
         {detail.scenario_result ? (
           <p className="meta-line">Memory refs: {detail.scenario_result.memory_record_refs.join(", ") || "none"}</p>
         ) : null}
       </SectionCard>
 
       <SectionCard title="Review Action">
+        <p className="meta-line">
+          Historical review state: {detail.review ? `last updated ${detail.review.updated_at}` : "no persisted operator review on this promotion yet"}
+        </p>
         <form className="review-form" onSubmit={onSubmit}>
           <label>
             Status

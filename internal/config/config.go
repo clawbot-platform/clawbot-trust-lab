@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,6 +20,15 @@ type Config struct {
 	ScenarioPacksDir    string
 	ReplayArchiveDir    string
 	ReportsDir          string
+	BenchmarkScheduler  SchedulerConfig
+}
+
+type SchedulerConfig struct {
+	Enabled        bool
+	ScenarioFamily string
+	Interval       time.Duration
+	MaxRuns        int
+	DryRun         bool
 }
 
 func Load() (Config, error) {
@@ -31,6 +41,12 @@ func Load() (Config, error) {
 		ScenarioPacksDir: envOrDefault("SCENARIO_PACKS_DIR", "./configs/scenario-packs"),
 		ReplayArchiveDir: envOrDefault("REPLAY_ARCHIVE_DIR", "./var/replay-archive"),
 		ReportsDir:       envOrDefault("REPORTS_DIR", "./reports"),
+		BenchmarkScheduler: SchedulerConfig{
+			Enabled:        strings.EqualFold(envOrDefault("BENCHMARK_SCHEDULER_ENABLED", "false"), "true"),
+			ScenarioFamily: envOrDefault("BENCHMARK_SCHEDULER_SCENARIO_FAMILY", "commerce"),
+			MaxRuns:        intEnvOrDefault("BENCHMARK_SCHEDULER_MAX_RUNS", 7),
+			DryRun:         strings.EqualFold(envOrDefault("BENCHMARK_SCHEDULER_DRY_RUN", "false"), "true"),
+		},
 	}
 
 	var err error
@@ -45,6 +61,10 @@ func Load() (Config, error) {
 	cfg.ClawMemTimeout, err = time.ParseDuration(envOrDefaultCompat("CLAWMEM_TIMEOUT", "MEMORY_TIMEOUT", "5s"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parse CLAWMEM_TIMEOUT: %w", err)
+	}
+	cfg.BenchmarkScheduler.Interval, err = time.ParseDuration(envOrDefault("BENCHMARK_SCHEDULER_INTERVAL", "24h"))
+	if err != nil {
+		return Config{}, fmt.Errorf("parse BENCHMARK_SCHEDULER_INTERVAL: %w", err)
 	}
 
 	if cfg.ControlPlaneURL == "" {
@@ -65,6 +85,9 @@ func Load() (Config, error) {
 	if cfg.ReportsDir == "" {
 		return Config{}, fmt.Errorf("REPORTS_DIR is required")
 	}
+	if cfg.BenchmarkScheduler.MaxRuns < 0 {
+		return Config{}, fmt.Errorf("BENCHMARK_SCHEDULER_MAX_RUNS must be >= 0")
+	}
 
 	return cfg, nil
 }
@@ -84,4 +107,16 @@ func envOrDefaultCompat(primary string, legacy string, fallback string) string {
 		return strings.TrimSpace(value)
 	}
 	return fallback
+}
+
+func intEnvOrDefault(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
 }

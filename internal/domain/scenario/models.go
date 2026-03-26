@@ -3,6 +3,7 @@ package scenario
 import "time"
 
 type ScenarioType string
+type ScenarioSetRole string
 
 const (
 	ScenarioTypeMandateReview        ScenarioType = "mandate_review"
@@ -12,18 +13,34 @@ const (
 	ScenarioTypeCommerceRefundReview ScenarioType = "commerce_refund_review"
 )
 
+const (
+	ScenarioSetRoleStable ScenarioSetRole = "stable"
+	ScenarioSetRoleLiving ScenarioSetRole = "living"
+)
+
+type FeatureTierModel struct {
+	TierA []string `json:"tier_a"`
+	TierB []string `json:"tier_b"`
+	TierC []string `json:"tier_c,omitempty"`
+}
+
 type Scenario struct {
-	ID               string       `json:"id"`
-	Name             string       `json:"name"`
-	Type             ScenarioType `json:"type"`
-	Description      string       `json:"description"`
-	PackID           string       `json:"pack_id"`
-	Version          string       `json:"version"`
-	Actors           []string     `json:"actors"`
-	TrustSignals     []string     `json:"trust_signals"`
-	ExpectedOutcomes []string     `json:"expected_outcomes"`
-	Tags             []string     `json:"tags"`
-	CreatedAt        time.Time    `json:"created_at"`
+	ID               string           `json:"id"`
+	Code             string           `json:"code,omitempty"`
+	Name             string           `json:"name"`
+	Type             ScenarioType     `json:"type"`
+	Family           string           `json:"family,omitempty"`
+	SetRole          ScenarioSetRole  `json:"set_role,omitempty"`
+	VariantID        string           `json:"variant_id,omitempty"`
+	Description      string           `json:"description"`
+	PackID           string           `json:"pack_id"`
+	Version          string           `json:"version"`
+	Actors           []string         `json:"actors"`
+	TrustSignals     []string         `json:"trust_signals"`
+	ExpectedOutcomes []string         `json:"expected_outcomes"`
+	Tags             []string         `json:"tags"`
+	FeatureModel     FeatureTierModel `json:"feature_model"`
+	CreatedAt        time.Time        `json:"created_at"`
 }
 
 type ScenarioPack struct {

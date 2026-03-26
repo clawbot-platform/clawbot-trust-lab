@@ -72,11 +72,17 @@ func TestLoadHistoricalStateDiscoversRoundsAndPromotions(t *testing.T) {
 	if state.Rounds[0].ReportDir != roundDir {
 		t.Fatalf("expected report dir %s, got %s", roundDir, state.Rounds[0].ReportDir)
 	}
-	if len(state.Rounds[0].Reports.Artifacts) != 4 {
-		t.Fatalf("expected 4 report artifacts, got %d", len(state.Rounds[0].Reports.Artifacts))
+	if len(state.Rounds[0].Reports.Artifacts) != 5 {
+		t.Fatalf("expected 5 report artifacts after recommendation backfill, got %d", len(state.Rounds[0].Reports.Artifacts))
 	}
 	if len(state.Rounds[0].PromotionResults) != 1 {
 		t.Fatalf("expected reconstructed promotions, got %#v", state.Rounds[0].PromotionResults)
+	}
+	if len(state.Rounds[0].Recommendations) == 0 {
+		t.Fatal("expected recommendations to be reconstructed for historical round")
+	}
+	if _, err := os.Stat(filepath.Join(roundDir, "recommendation-report.json")); err != nil {
+		t.Fatalf("expected recommendation-report.json to be backfilled: %v", err)
 	}
 	if len(state.DetectionResults) != 1 {
 		t.Fatalf("expected 1 reconstructed detection result, got %d", len(state.DetectionResults))
@@ -118,6 +124,87 @@ func TestLoadHistoricalStateSkipsMalformedDirectories(t *testing.T) {
 	}
 }
 
+func TestLoadHistoricalStateBackfillsLegacyRecommendationReportIdempotently(t *testing.T) {
+	reportsDir := t.TempDir()
+	round := benchmark.BenchmarkRound{
+		ID:             "round-legacy",
+		ScenarioFamily: "commerce",
+		StartedAt:      time.Date(2026, 3, 24, 12, 0, 0, 0, time.UTC),
+		CompletedAt:    time.Date(2026, 3, 24, 12, 2, 0, 0, time.UTC),
+		Summary: benchmark.RoundSummary{
+			RoundID:             "round-legacy",
+			ScenarioFamily:      "commerce",
+			StableScenarioCount: 2,
+			ChallengerCount:     1,
+			PromotionCount:      1,
+			ReplayPassRate:      1,
+			RobustnessOutcome:   benchmark.RobustnessOutcomeNewBlindSpotDiscovered,
+			ImportantFindings:   []string{"Legacy challenger should now be replay-stable."},
+		},
+		ScenarioResults: []benchmark.ScenarioResult{{
+			ID:                   "sr-legacy-1",
+			ScenarioID:           "commerce-v1-weakened-provenance",
+			SetKind:              benchmark.ScenarioSetLiving,
+			DetectionResultRef:   "det-legacy-1",
+			FinalDetectionStatus: "clean",
+			FinalRecommendation:  "allow",
+			TriggeredRuleIDs:     []string{"missing_provenance_sensitive_action"},
+			ReplayCaseRefs:       []string{"rc-legacy-1"},
+		}},
+		PromotionResults: []benchmark.PromotionDecision{{
+			ID:                  "promo-legacy-1",
+			RoundID:             "round-legacy",
+			ScenarioID:          "commerce-v1-weakened-provenance",
+			ChallengerVariantID: "variant-v1-weakened-provenance",
+			PromotionReason:     benchmark.PromotionReasonDetectorMiss,
+			Rationale:           "Legacy challenger evaluated as clean.",
+			DetectionResultRef:  "det-legacy-1",
+			ReplayCaseRef:       "rc-legacy-1",
+			ScenarioResultRef:   "sr-legacy-1",
+			Promoted:            true,
+			CreatedAt:           time.Date(2026, 3, 24, 12, 2, 0, 0, time.UTC),
+		}},
+	}
+
+	roundDir := filepath.Join(reportsDir, round.ID)
+	if err := os.MkdirAll(roundDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	writeFixtureJSON(t, filepath.Join(roundDir, "round-summary.json"), round)
+	writeFixtureJSON(t, filepath.Join(roundDir, "promotion-report.json"), round.PromotionResults)
+	writeFixtureJSON(t, filepath.Join(roundDir, "detection-delta.json"), []benchmark.DetectionDelta{{ScenarioID: round.ScenarioResults[0].ScenarioID}})
+
+	logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+	state := LoadHistoricalState(reportsDir, logger)
+	if len(state.Rounds) != 1 {
+		t.Fatalf("expected 1 historical round, got %d", len(state.Rounds))
+	}
+
+	backfilledPath := filepath.Join(roundDir, "recommendation-report.json")
+	firstBody, err := os.ReadFile(backfilledPath)
+	if err != nil {
+		t.Fatalf("expected recommendation-report.json after backfill: %v", err)
+	}
+	if len(state.Rounds[0].Recommendations) == 0 {
+		t.Fatal("expected reconstructed recommendations in bootstrapped round")
+	}
+	if !artifactNames(state.Rounds[0].Reports).Has("recommendation-report.json") {
+		t.Fatalf("expected recommendation-report.json in artifact listing, got %#v", state.Rounds[0].Reports.Artifacts)
+	}
+
+	state = LoadHistoricalState(reportsDir, logger)
+	secondBody, err := os.ReadFile(backfilledPath)
+	if err != nil {
+		t.Fatalf("ReadFile() second pass error = %v", err)
+	}
+	if string(firstBody) != string(secondBody) {
+		t.Fatal("expected idempotent backfill rerun to preserve recommendation-report.json content")
+	}
+	if len(state.Rounds) != 1 || !artifactNames(state.Rounds[0].Reports).Has("recommendation-report.json") {
+		t.Fatalf("expected stable report artifact listing after rerun, got %#v", state.Rounds)
+	}
+}
+
 func writeFixtureJSON(t *testing.T, path string, payload any) {
 	t.Helper()
 	body, err := json.MarshalIndent(payload, "", "  ")
@@ -128,4 +215,19 @@ func writeFixtureJSON(t *testing.T, path string, payload any) {
 	if err := os.WriteFile(path, body, 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
+}
+
+type artifactNameSet map[string]struct{}
+
+func (s artifactNameSet) Has(name string) bool {
+	_, ok := s[name]
+	return ok
+}
+
+func artifactNames(index benchmark.ReportIndex) artifactNameSet {
+	out := artifactNameSet{}
+	for _, artifact := range index.Artifacts {
+		out[artifact.Name] = struct{}{}
+	}
+	return out
 }

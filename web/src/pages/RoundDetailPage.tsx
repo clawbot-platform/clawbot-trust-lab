@@ -57,7 +57,18 @@ export function RoundDetailPage() {
         <Metric label="Living set" value={`${round.living_set.caught_count}/${round.living_set.total_count}`} />
         <Metric label="Replay pass rate" value={round.summary.replay_pass_rate.toFixed(2)} />
         <Metric label="Robustness" value={<StatusPill value={round.summary.robustness_outcome} />} />
+        <Metric label="Tier C usage" value={round.summary.tier_c_usage_count} />
       </div>
+
+      <SectionCard title="Production Bridge Posture">
+        <div className="detail-grid">
+          <Detail label="Evaluation mode" value={round.summary.evaluation_mode} />
+          <Detail label="Blocking mode" value={round.summary.blocking_mode} />
+          <Detail label="Recommendations" value={round.summary.recommendations} />
+        </div>
+        <p className="narrative">{round.summary.existing_control_integration_note}</p>
+        <p className="meta-line">Recommended follow-up: {round.summary.recommended_follow_up}</p>
+      </SectionCard>
 
       <SectionCard title="Promoted Cases">
         {round.promotion_results.length === 0 ? <p className="muted">No promotions in this round.</p> : null}
@@ -73,6 +84,23 @@ export function RoundDetailPage() {
                 <Link className="text-link" to={`/promotions/${item.id}`}>
                   Review
                 </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Round Recommendations">
+        {round.recommendations.length === 0 ? <p className="muted">No explicit recommendations were generated.</p> : null}
+        <div className="list-grid">
+          {round.recommendations.map((item) => (
+            <article className="list-item" key={item.id}>
+              <div>
+                <h3>{item.type}</h3>
+                <p className="muted">{item.rationale}</p>
+              </div>
+              <div className="actions">
+                <StatusPill value={item.priority} />
               </div>
             </article>
           ))}
@@ -136,6 +164,15 @@ export function RoundDetailPage() {
 function Metric({ label, value }: { label: string; value: number | string | ReactNode }) {
   return (
     <div className="metric-card">
+      <p className="metric-label">{label}</p>
+      <div className="metric-value">{value}</div>
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: number | string | ReactNode }) {
+  return (
+    <div>
       <p className="metric-label">{label}</p>
       <div className="metric-value">{value}</div>
     </div>

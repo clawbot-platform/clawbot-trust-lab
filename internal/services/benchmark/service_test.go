@@ -2,6 +2,7 @@ package benchmark
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +46,11 @@ func (s scenarioCatalogStub) ListScenarios() []domainscenario.Scenario {
 }
 
 func (s scenarioCatalogStub) GetScenario(id string) (domainscenario.Scenario, error) {
-	return s.items[id], nil
+	item, ok := s.items[id]
+	if !ok {
+		return domainscenario.Scenario{}, errNotFound("scenario", id)
+	}
+	return item, nil
 }
 
 type memoryClientStub struct{}
@@ -81,11 +86,28 @@ func newRoundService(t *testing.T) *Service {
 	}
 	scenarioService := servicescenario.NewService(
 		scenarioCatalogStub{items: map[string]domainscenario.Scenario{
-			"commerce-clean-agent-assisted-purchase":           {ID: "commerce-clean-agent-assisted-purchase", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
-			"commerce-suspicious-refund-attempt":               {ID: "commerce-suspicious-refund-attempt", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
-			"commerce-challenger-weakened-provenance-purchase": {ID: "commerce-challenger-weakened-provenance-purchase", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
-			"commerce-challenger-expired-mandate-purchase":     {ID: "commerce-challenger-expired-mandate-purchase", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
-			"commerce-challenger-approval-removed-refund":      {ID: "commerce-challenger-approval-removed-refund", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-h1-direct-human-purchase":                   {ID: "commerce-h1-direct-human-purchase", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-h2-human-refund-valid-history":              {ID: "commerce-h2-human-refund-valid-history", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-a1-agent-assisted-purchase-valid-controls":  {ID: "commerce-a1-agent-assisted-purchase-valid-controls", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-a2-fully-delegated-replenishment-purchase":  {ID: "commerce-a2-fully-delegated-replenishment-purchase", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-a3-agent-assisted-refund-approval-evidence": {ID: "commerce-a3-agent-assisted-refund-approval-evidence", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-s1-refund-weak-authorization":               {ID: "commerce-s1-refund-weak-authorization", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-s4-repeated-agent-refund-attempts":          {ID: "commerce-s4-repeated-agent-refund-attempts", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-s2-delegated-purchase-weak-provenance":      {ID: "commerce-s2-delegated-purchase-weak-provenance", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-s3-approval-removed-after-authorization":    {ID: "commerce-s3-approval-removed-after-authorization", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-s5-merchant-scope-drift-delegated-action":   {ID: "commerce-s5-merchant-scope-drift-delegated-action", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-v1-weakened-provenance":                     {ID: "commerce-v1-weakened-provenance", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-v2-expired-inactive-mandate":                {ID: "commerce-v2-expired-inactive-mandate", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-v3-approval-removed":                        {ID: "commerce-v3-approval-removed", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-v4-actor-switch-human-to-agent":             {ID: "commerce-v4-actor-switch-human-to-agent", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-v5-repeat-attempt-escalation":               {ID: "commerce-v5-repeat-attempt-escalation", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-v6-merchant-scope-drift":                    {ID: "commerce-v6-merchant-scope-drift", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-v7-high-value-delegated-purchase":           {ID: "commerce-v7-high-value-delegated-purchase", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-challenger-weakened-provenance-purchase":    {ID: "commerce-challenger-weakened-provenance-purchase", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-challenger-expired-mandate-purchase":        {ID: "commerce-challenger-expired-mandate-purchase", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-challenger-approval-removed-refund":         {ID: "commerce-challenger-approval-removed-refund", PackID: "challenger-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
+			"commerce-clean-agent-assisted-purchase":              {ID: "commerce-clean-agent-assisted-purchase", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommercePurchase},
+			"commerce-suspicious-refund-attempt":                  {ID: "commerce-suspicious-refund-attempt", PackID: "commerce-pack", Type: domainscenario.ScenarioTypeCommerceRefundReview},
 		}},
 		servicecommerce.NewService(world),
 		serviceevents.NewService(world),
@@ -120,11 +142,11 @@ func TestRunRoundCreatesReportsAndPromotion(t *testing.T) {
 	if round.RoundStatus != domainbenchmark.RoundStatusCompleted {
 		t.Fatalf("expected completed round, got %s", round.RoundStatus)
 	}
-	if len(round.StableScenarioRefs) != 2 {
-		t.Fatalf("expected 2 stable scenarios, got %d", len(round.StableScenarioRefs))
+	if len(round.StableScenarioRefs) != 7 {
+		t.Fatalf("expected 7 stable scenarios, got %d", len(round.StableScenarioRefs))
 	}
-	if len(round.ChallengerVariantRefs) != 3 {
-		t.Fatalf("expected 3 challenger variants, got %d", len(round.ChallengerVariantRefs))
+	if len(round.ChallengerVariantRefs) != 10 {
+		t.Fatalf("expected 10 challenger variants, got %d", len(round.ChallengerVariantRefs))
 	}
 	if len(round.PromotionResults) == 0 {
 		t.Fatal("expected at least one promotion result")
@@ -132,12 +154,83 @@ func TestRunRoundCreatesReportsAndPromotion(t *testing.T) {
 	if round.Summary.RobustnessOutcome != domainbenchmark.RobustnessOutcomeNewBlindSpotDiscovered {
 		t.Fatalf("unexpected robustness outcome: %s", round.Summary.RobustnessOutcome)
 	}
-	if len(round.Reports.Artifacts) != 5 {
-		t.Fatalf("expected 5 report artifacts, got %d", len(round.Reports.Artifacts))
+	if len(round.Reports.Artifacts) != 6 {
+		t.Fatalf("expected 6 report artifacts, got %d", len(round.Reports.Artifacts))
 	}
 	for _, artifact := range round.Reports.Artifacts {
 		if _, err := os.Stat(artifact.Path); err != nil {
 			t.Fatalf("expected artifact %s to exist: %v", artifact.Path, err)
+		}
+	}
+	if round.Summary.EvaluationMode != "shadow" {
+		t.Fatalf("expected evaluation mode shadow, got %#v", round.Summary)
+	}
+	if round.Summary.BlockingMode != "recommendation_only" {
+		t.Fatalf("expected blocking mode recommendation_only, got %#v", round.Summary)
+	}
+	if round.Summary.ExistingControlNote == "" || round.Summary.RecommendedFollowUp == "" {
+		t.Fatalf("expected production-bridge summary fields to be populated, got %#v", round.Summary)
+	}
+	if len(round.Recommendations) == 0 {
+		t.Fatal("expected recommendation data on round")
+	}
+	for _, item := range round.Recommendations {
+		if item.LinkedRoundID != round.ID {
+			t.Fatalf("expected recommendation linked to round %s, got %#v", round.ID, item)
+		}
+		if len(item.LinkedScenarioIDs) == 0 {
+			t.Fatalf("expected recommendation to link scenarios, got %#v", item)
+		}
+		if item.SuggestedAction == "" || item.Rationale == "" {
+			t.Fatalf("expected recommendation to be actionable, got %#v", item)
+		}
+		if item.ExistingControlIntegrationNote == "" {
+			t.Fatalf("expected recommendation to include sidecar guidance, got %#v", item)
+		}
+	}
+}
+
+func TestRunRoundCalibratesStableScenariosBelievably(t *testing.T) {
+	service := newRoundService(t)
+
+	round, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"})
+	if err != nil {
+		t.Fatalf("RunRound() error = %v", err)
+	}
+
+	resultsByScenario := map[string]domainbenchmark.ScenarioResult{}
+	for _, item := range round.ScenarioResults {
+		resultsByScenario[item.ScenarioID] = item
+	}
+
+	benignStable := []string{
+		"commerce-h1-direct-human-purchase",
+		"commerce-h2-human-refund-valid-history",
+		"commerce-a1-agent-assisted-purchase-valid-controls",
+		"commerce-a2-fully-delegated-replenishment-purchase",
+		"commerce-a3-agent-assisted-refund-approval-evidence",
+	}
+	for _, scenarioID := range benignStable {
+		item := resultsByScenario[scenarioID]
+		if item.FinalDetectionStatus != detectionmodel.DetectionStatusClean {
+			t.Fatalf("expected benign stable scenario %s to be clean, got %#v", scenarioID, item)
+		}
+		if !item.Passed {
+			t.Fatalf("expected benign stable scenario %s to pass its floor, got %#v", scenarioID, item)
+		}
+	}
+
+	suspiciousStable := []string{
+		"commerce-s1-refund-weak-authorization",
+		"commerce-s4-repeated-agent-refund-attempts",
+	}
+	for _, scenarioID := range suspiciousStable {
+		item := resultsByScenario[scenarioID]
+		if item.FinalDetectionStatus == detectionmodel.DetectionStatusClean {
+			t.Fatalf("expected suspicious stable scenario %s not to be clean, got %#v", scenarioID, item)
+		}
+		if !item.Passed {
+			t.Fatalf("expected suspicious stable scenario %s to satisfy its floor, got %#v", scenarioID, item)
 		}
 	}
 }
@@ -170,6 +263,66 @@ func TestRunRoundRetestsPriorPromotions(t *testing.T) {
 	}
 }
 
+func TestPromotedCasesDeduplicatesReplayRegressionInputs(t *testing.T) {
+	round := domainbenchmark.BenchmarkRound{
+		PromotionResults: []domainbenchmark.PromotionDecision{
+			{
+				ID:                  "promo-1",
+				ScenarioID:          "commerce-s2-delegated-purchase-weak-provenance",
+				ChallengerVariantID: "variant-v1-weakened-provenance",
+				PromotionReason:     domainbenchmark.PromotionReasonSuspiciousBehaviorTooLow,
+				Promoted:            true,
+				CreatedAt:           time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC),
+			},
+			{
+				ID:                  "promo-2",
+				ScenarioID:          "commerce-s2-delegated-purchase-weak-provenance",
+				ChallengerVariantID: "variant-v1-weakened-provenance",
+				PromotionReason:     domainbenchmark.PromotionReasonDetectorMiss,
+				Promoted:            true,
+				CreatedAt:           time.Date(2026, 3, 25, 12, 1, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	items := promotedCases(round)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 deduplicated replay promotion, got %#v", items)
+	}
+	if items[0].PromotionReason != domainbenchmark.PromotionReasonDetectorMiss {
+		t.Fatalf("expected strongest promotion reason to win, got %#v", items[0])
+	}
+}
+
+func TestDedupePromotionsKeepsRoundCountsClean(t *testing.T) {
+	items := []domainbenchmark.PromotionDecision{
+		{
+			ID:                  "promo-1",
+			ScenarioID:          "commerce-s3-approval-removed-after-authorization",
+			ChallengerVariantID: "variant-v3-approval-removed",
+			PromotionReason:     domainbenchmark.PromotionReasonSuspiciousBehaviorTooLow,
+			Promoted:            true,
+			CreatedAt:           time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			ID:                  "promo-2",
+			ScenarioID:          "commerce-s3-approval-removed-after-authorization",
+			ChallengerVariantID: "variant-v3-approval-removed",
+			PromotionReason:     domainbenchmark.PromotionReasonMeaningfulRegression,
+			Promoted:            true,
+			CreatedAt:           time.Date(2026, 3, 25, 12, 1, 0, 0, time.UTC),
+		},
+	}
+
+	deduped := dedupePromotions(items)
+	if len(deduped) != 1 {
+		t.Fatalf("expected one promotion after dedupe, got %#v", deduped)
+	}
+	if deduped[0].PromotionReason != domainbenchmark.PromotionReasonMeaningfulRegression {
+		t.Fatalf("expected strongest reason to be preserved, got %#v", deduped[0])
+	}
+}
+
 func TestRunRoundReportsEndpointDataIsStored(t *testing.T) {
 	service := newRoundService(t)
 
@@ -187,6 +340,33 @@ func TestRunRoundReportsEndpointDataIsStored(t *testing.T) {
 	}
 	if filepath.Base(stored.Directory) != round.ID {
 		t.Fatalf("unexpected report directory %s", stored.Directory)
+	}
+}
+
+func TestRunScheduledExecutesMultipleRounds(t *testing.T) {
+	service := newRoundService(t)
+	counter := 0
+	service.now = func() time.Time {
+		base := time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC)
+		value := base.Add(time.Duration(counter) * time.Minute)
+		counter++
+		return value
+	}
+
+	items, err := service.RunScheduled(context.Background(), domainbenchmark.SchedulerControlInput{
+		ScenarioFamily: "commerce",
+		Interval:       "1ms",
+		MaxRuns:        2,
+		DryRun:         true,
+	})
+	if err != nil {
+		t.Fatalf("RunScheduled() error = %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 scheduled rounds, got %d", len(items))
+	}
+	if service.SchedulerStatus().ExecutedRuns < 2 {
+		t.Fatalf("expected executed runs to be tracked, got %#v", service.SchedulerStatus())
 	}
 }
 
@@ -212,7 +392,36 @@ func TestListRoundsIncludesHistoricalRoundsAfterBootstrap(t *testing.T) {
 	}
 }
 
-func TestWeakenedProvenanceVariantPromotesOnDetectorMiss(t *testing.T) {
+func TestLongRunSummaryAggregatesRecommendations(t *testing.T) {
+	service := newRoundService(t)
+	counter := 0
+	service.now = func() time.Time {
+		base := time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC)
+		value := base.Add(time.Duration(counter) * time.Minute)
+		counter++
+		return value
+	}
+
+	if _, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"}); err != nil {
+		t.Fatalf("RunRound() first error = %v", err)
+	}
+	if _, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"}); err != nil {
+		t.Fatalf("RunRound() second error = %v", err)
+	}
+
+	summary := service.LongRunSummary()
+	if summary.RoundsExecuted != 2 {
+		t.Fatalf("expected 2 rounds executed, got %#v", summary)
+	}
+	if len(summary.PromotionsOverTime) != 2 {
+		t.Fatalf("expected promotions over time entries, got %#v", summary.PromotionsOverTime)
+	}
+	if summary.RecommendationCounts[domainbenchmark.RecommendationTypeMonitorInShadowMode] == 0 {
+		t.Fatalf("expected shadow-mode recommendation count, got %#v", summary.RecommendationCounts)
+	}
+}
+
+func TestRoundProducesMeaningfulPromotionForLivingSet(t *testing.T) {
 	service := newRoundService(t)
 
 	round, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"})
@@ -222,13 +431,13 @@ func TestWeakenedProvenanceVariantPromotesOnDetectorMiss(t *testing.T) {
 
 	found := false
 	for _, item := range round.PromotionResults {
-		if item.ChallengerVariantID == "variant-weakened-provenance" && item.PromotionReason == domainbenchmark.PromotionReasonDetectorMiss {
+		if item.Promoted && item.PromotionReason == domainbenchmark.PromotionReasonSuspiciousBehaviorTooLow {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatalf("expected weakened provenance promotion in %#v", round.PromotionResults)
+		t.Fatalf("expected at least one living-set promotion for a materially under-scored challenger in %#v", round.PromotionResults)
 	}
 }
 
@@ -239,4 +448,8 @@ func TestStatusRankOrdering(t *testing.T) {
 	if meetsMinimumStatus(detectionmodel.DetectionStatusClean, detectionmodel.DetectionStatusSuspicious) {
 		t.Fatal("did not expect clean to satisfy suspicious floor")
 	}
+}
+
+func errNotFound(kind string, id string) error {
+	return fmt.Errorf("%s %s not found", kind, id)
 }

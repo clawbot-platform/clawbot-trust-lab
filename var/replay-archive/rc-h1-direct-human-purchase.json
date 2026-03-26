@@ -1,0 +1,19 @@
+{
+  "id": "rc-h1-direct-human-purchase",
+  "scenario_id": "commerce-h1-direct-human-purchase",
+  "trust_artifact_refs": [
+    "ta-h1-direct-human-purchase"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Direct human purchase completed with ordinary commerce signals and no delegated action.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-h1-direct-human-purchase.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Human baseline remains useful for replay regression.",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-25T09:02:45Z"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "rc-v2-expired-inactive-mandate",
+  "scenario_id": "commerce-v2-expired-inactive-mandate",
+  "trust_artifact_refs": [
+    "ta-v2-expired-inactive-mandate"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Delegated purchase attempted with expired mandate and required review.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-v2-expired-inactive-mandate.json"
+  },
+  "promotion": {
+    "status": "review",
+    "reason": "Expired mandate challenger should remain part of replay regression.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T17:02:45Z"
+}

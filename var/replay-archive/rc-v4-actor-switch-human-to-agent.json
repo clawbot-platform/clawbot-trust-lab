@@ -1,0 +1,19 @@
+{
+  "id": "rc-v4-actor-switch-human-to-agent",
+  "scenario_id": "commerce-v4-actor-switch-human-to-agent",
+  "trust_artifact_refs": [
+    "ta-v4-actor-switch-human-to-agent"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Refund path switched from human to agent without stronger approval controls.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-v4-actor-switch-human-to-agent.json"
+  },
+  "promotion": {
+    "status": "candidate",
+    "reason": "Actor-switch challenger probes low-telemetry delegated action gaps.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T20:07:30Z"
+}

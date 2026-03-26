@@ -42,6 +42,16 @@ type RuleDefinition struct {
 	Severity    int    `json:"severity"`
 }
 
+type TierProfile struct {
+	TierAAvailable bool     `json:"tier_a_available"`
+	TierBAvailable bool     `json:"tier_b_available"`
+	TierCAvailable bool     `json:"tier_c_available"`
+	TierCUsed      bool     `json:"tier_c_used"`
+	TierANotes     []string `json:"tier_a_notes"`
+	TierBNotes     []string `json:"tier_b_notes"`
+	TierCNotes     []string `json:"tier_c_notes"`
+}
+
 type DetectionContext struct {
 	ScenarioID               string          `json:"scenario_id"`
 	OrderID                  string          `json:"order_id,omitempty"`
@@ -49,12 +59,14 @@ type DetectionContext struct {
 	TrustDecisionRefs        []string        `json:"trust_decision_refs"`
 	ReplayCaseRefs           []string        `json:"replay_case_refs"`
 	Features                 map[string]bool `json:"features"`
+	Signals                  map[string]any  `json:"signals"`
 	EventCount               int             `json:"event_count"`
 	TrustEventCount          int             `json:"trust_event_count"`
 	TrustDecisionReasonCount int             `json:"trust_decision_reason_count"`
 	ReplayHistoryCount       int             `json:"replay_history_count"`
 	MemoryContextPresent     bool            `json:"memory_context_present"`
 	MemoryStatus             string          `json:"memory_status"`
+	TierProfile              TierProfile     `json:"tier_profile"`
 }
 
 type DetectionResult struct {

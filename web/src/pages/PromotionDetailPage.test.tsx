@@ -14,6 +14,9 @@ test("promotion detail renders linked context and submits a review action", asyn
   expect(screen.getByText(promotionDetail.promotion.rationale)).toBeInTheDocument();
   expect(screen.getByText("delegated_actor_present")).toBeInTheDocument();
   expect(screen.getByText("Memory refs: mem-trust-1, mem-replay-1")).toBeInTheDocument();
+  expect(screen.getByText("Tier C used: true")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "View Round" })).toHaveAttribute("href", `/rounds/${promotionDetail.round_id}`);
+  expect(screen.getByText("Historical review state: last updated 2026-03-25T12:05:00Z")).toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText("Status"), { target: { value: "accepted" } });
   fireEvent.change(screen.getByLabelText("Operator note"), {

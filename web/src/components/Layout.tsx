@@ -2,7 +2,8 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const links = [
   { to: "/", label: "Rounds" },
-  { to: "/promotions", label: "Promotions" }
+  { to: "/promotions", label: "Promotions" },
+  { to: "/recommendations", label: "Recommendations" }
 ];
 
 export function Layout() {

@@ -15,4 +15,5 @@ test("renders operator navigation", () => {
   expect(screen.getByText("Trust Lab Operator")).toBeInTheDocument();
   expect(screen.getByText("Rounds")).toBeInTheDocument();
   expect(screen.getByText("Promotions")).toBeInTheDocument();
+  expect(screen.getByText("Recommendations")).toBeInTheDocument();
 });

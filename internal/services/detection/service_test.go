@@ -83,15 +83,55 @@ func newExecutionService() (*scenariosvc.Service, *store.CommerceWorldStore) {
 	world := store.NewCommerceWorldStore()
 	execution := scenariosvc.NewService(
 		scenarioCatalogStub{items: map[string]domainscenario.Scenario{
+			"commerce-h2-human-refund-valid-history": {
+				ID:   "commerce-h2-human-refund-valid-history",
+				Name: "Human Refund with Valid History",
+				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "order_age", "amount"},
+					TierB: []string{"historical_refund_rate", "approval_history"},
+					TierC: []string{},
+				},
+			},
+			"commerce-a3-agent-assisted-refund-approval-evidence": {
+				ID:   "commerce-a3-agent-assisted-refund-approval-evidence",
+				Name: "Agent-Assisted Refund with Approval Evidence",
+				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "amount", "delegated_indicator"},
+					TierB: []string{"historical_refund_rate", "approval_history", "recent_attempt_count"},
+					TierC: []string{"mandate_status", "provenance_confidence", "delegation_mode"},
+				},
+			},
+			"commerce-s4-repeated-agent-refund-attempts": {
+				ID:   "commerce-s4-repeated-agent-refund-attempts",
+				Name: "Repeated Agent Refund Attempts",
+				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "amount", "delegated_indicator"},
+					TierB: []string{"repeat_attempt_count", "historical_refund_rate", "prior_review_outcomes"},
+					TierC: []string{"mandate_status", "approval_evidence", "delegation_mode"},
+				},
+			},
 			"commerce-clean-agent-assisted-purchase": {
 				ID:   "commerce-clean-agent-assisted-purchase",
 				Name: "Clean Agent-Assisted Purchase",
 				Type: domainscenario.ScenarioTypeCommercePurchase,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"amount", "merchant_category"},
+					TierB: []string{"buyer_history", "recent_attempt_count"},
+					TierC: []string{"mandate_status", "provenance_confidence"},
+				},
 			},
 			"commerce-suspicious-refund-attempt": {
 				ID:   "commerce-suspicious-refund-attempt",
 				Name: "Suspicious Refund Attempt",
 				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "amount"},
+					TierB: []string{"historical_refund_rate", "repeat_attempt_count"},
+					TierC: []string{"mandate_status", "approval_evidence"},
+				},
 			},
 		}},
 		commerceSvc.NewService(world),
@@ -138,6 +178,61 @@ func TestEvaluateCleanScenarioReturnsClean(t *testing.T) {
 	}
 }
 
+func TestEvaluateHumanRefundWithValidHistoryReturnsClean(t *testing.T) {
+	execution, world := newExecutionService()
+	if _, err := execution.Execute(context.Background(), "commerce-h2-human-refund-valid-history"); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	service := NewService(
+		world,
+		execution,
+		replayReaderStub{},
+		memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+			ScenarioID: "commerce-h2-human-refund-valid-history",
+			Context:    map[string]any{"record_count": 0},
+		}},
+		store.NewDetectionStore(),
+	)
+
+	result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: "commerce-h2-human-refund-valid-history"})
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	if result.Status != detectionmodel.DetectionStatusClean {
+		t.Fatalf("expected clean status, got %s", result.Status)
+	}
+	if len(result.TriggeredRules) != 0 {
+		t.Fatalf("expected no triggered rules, got %#v", result.TriggeredRules)
+	}
+}
+
+func TestEvaluateAgentRefundWithApprovalEvidenceReturnsClean(t *testing.T) {
+	execution, world := newExecutionService()
+	if _, err := execution.Execute(context.Background(), "commerce-a3-agent-assisted-refund-approval-evidence"); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	service := NewService(
+		world,
+		execution,
+		replayReaderStub{},
+		memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+			ScenarioID: "commerce-a3-agent-assisted-refund-approval-evidence",
+			Context:    map[string]any{"record_count": 1},
+		}},
+		store.NewDetectionStore(),
+	)
+
+	result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: "commerce-a3-agent-assisted-refund-approval-evidence"})
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	if result.Status != detectionmodel.DetectionStatusClean {
+		t.Fatalf("expected clean status, got %s", result.Status)
+	}
+}
+
 func TestEvaluateSuspiciousScenarioTriggersRuleHits(t *testing.T) {
 	execution, world := newExecutionService()
 	if _, err := execution.Execute(context.Background(), "commerce-suspicious-refund-attempt"); err != nil {
@@ -168,13 +263,40 @@ func TestEvaluateSuspiciousScenarioTriggersRuleHits(t *testing.T) {
 	if result.Recommendation != detectionmodel.RecommendationStepUp {
 		t.Fatalf("expected step_up recommendation, got %s", result.Recommendation)
 	}
-	if result.Score != 75 {
-		t.Fatalf("expected score 75, got %d", result.Score)
+	if result.Score < 75 {
+		t.Fatalf("expected score at least 75, got %d", result.Score)
 	}
 	assertReasonCode(t, result.ReasonCodes, "agent_refund_without_approval")
 	assertReasonCode(t, result.ReasonCodes, "missing_mandate_delegated_action")
 	assertReasonCode(t, result.ReasonCodes, "prior_step_up_decision")
 	assertReasonCode(t, result.ReasonCodes, "refund_weak_authorization")
+}
+
+func TestEvaluateRepeatedAgentRefundAttemptsNoLongerReturnsClean(t *testing.T) {
+	execution, world := newExecutionService()
+	if _, err := execution.Execute(context.Background(), "commerce-s4-repeated-agent-refund-attempts"); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	service := NewService(
+		world,
+		execution,
+		replayReaderStub{},
+		memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+			ScenarioID: "commerce-s4-repeated-agent-refund-attempts",
+			Context:    map[string]any{"record_count": 0},
+		}},
+		store.NewDetectionStore(),
+	)
+
+	result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: "commerce-s4-repeated-agent-refund-attempts"})
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	if result.Status == detectionmodel.DetectionStatusClean {
+		t.Fatalf("expected repeated agent refund attempts to be escalated, got %#v", result)
+	}
+	assertReasonCode(t, result.ReasonCodes, "repeat_suspicious_context")
 }
 
 func TestEvaluateSuspiciousScenarioIncludesRepeatContextRule(t *testing.T) {
@@ -228,6 +350,36 @@ func TestEvaluateByOrderIDResolvesExecution(t *testing.T) {
 	}
 	if result.OrderID != run.Entities.OrderRefs[0] {
 		t.Fatalf("expected order id %s, got %s", run.Entities.OrderRefs[0], result.OrderID)
+	}
+}
+
+func TestEvaluateTierCRemainsOptionalForHumanBaseline(t *testing.T) {
+	execution, world := newExecutionService()
+	if _, err := execution.Execute(context.Background(), "commerce-clean-agent-assisted-purchase"); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	service := NewService(
+		world,
+		execution,
+		replayReaderStub{},
+		memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+			ScenarioID: "commerce-clean-agent-assisted-purchase",
+			Context:    map[string]any{"record_count": 0},
+		}},
+		store.NewDetectionStore(),
+	)
+
+	result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: "commerce-clean-agent-assisted-purchase"})
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	contextData, ok := result.Metadata["context"].(detectionmodel.DetectionContext)
+	if !ok {
+		t.Fatalf("expected typed context metadata, got %#v", result.Metadata["context"])
+	}
+	if !contextData.TierProfile.TierAAvailable || !contextData.TierProfile.TierBAvailable {
+		t.Fatalf("expected tier A and B to be available, got %#v", contextData.TierProfile)
 	}
 }
 

@@ -1,0 +1,19 @@
+{
+  "id": "rc-v7-high-value-delegated-purchase",
+  "scenario_id": "commerce-v7-high-value-delegated-purchase",
+  "trust_artifact_refs": [
+    "ta-v7-high-value-delegated-purchase"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "High-value delegated purchase pushed materially above the buyer's normal spend baseline.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-v7-high-value-delegated-purchase.json"
+  },
+  "promotion": {
+    "status": "candidate",
+    "reason": "High-value delegated purchase is a strong sidecar recommendation scenario.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T22:02:45Z"
+}

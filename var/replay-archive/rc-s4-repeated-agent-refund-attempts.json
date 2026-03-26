@@ -1,0 +1,19 @@
+{
+  "id": "rc-s4-repeated-agent-refund-attempts",
+  "scenario_id": "commerce-s4-repeated-agent-refund-attempts",
+  "trust_artifact_refs": [
+    "ta-s4-repeated-agent-refund-attempts"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Repeated agent refund attempts remained explainably suspicious because history increased concern.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-s4-repeated-agent-refund-attempts.json"
+  },
+  "promotion": {
+    "status": "hold",
+    "reason": "Repeat refund pattern should stay in the stable suspicious set.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T15:08:30Z"
+}

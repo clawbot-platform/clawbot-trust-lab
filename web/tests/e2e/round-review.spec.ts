@@ -9,13 +9,16 @@ test("operator can inspect a round, compare it, and open a report artifact", asy
     await page.waitForLoadState("domcontentloaded");
 
     await expect(page.getByRole("heading", { name: "Benchmark Rounds" })).toBeVisible();
-    await expect(page.getByText(currentRound.id)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recommendation Snapshot" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View Recommendations" })).toBeVisible();
 
-    await page.getByRole("link", { name: /open/i }).first().click();
+    await page.goto(`/rounds/${currentRound.id}`);
+    await page.waitForLoadState("domcontentloaded");
 
     await expect(page.getByRole("heading", { name: currentRound.id })).toBeVisible();
     await expect(page.getByText(/new blind spot discovered/i)).toBeVisible();
     await expect(page.getByText("0.67")).toBeVisible();
+    await expect(page.getByText(/run beside an incumbent fraud stack/i)).toBeVisible();
 
     await page.getByRole("combobox", { name: "Previous round" }).selectOption(previousRound.id);
     await expect(page.getByText("-0.33")).toBeVisible();

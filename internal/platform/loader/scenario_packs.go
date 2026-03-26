@@ -101,8 +101,12 @@ func (l *Loader) LoadFile(name string) (scenario.ScenarioPack, error) {
 
 		entry := scenario.Scenario{
 			ID:               item.ID,
+			Code:             strings.TrimSpace(item.Code),
 			Name:             item.Name,
 			Type:             scenario.ScenarioType(item.ScenarioType),
+			Family:           strings.TrimSpace(item.Family),
+			SetRole:          scenario.ScenarioSetRole(strings.TrimSpace(item.SetRole)),
+			VariantID:        strings.TrimSpace(item.VariantID),
 			Description:      item.Description,
 			PackID:           file.ID,
 			Version:          item.Version,
@@ -110,7 +114,12 @@ func (l *Loader) LoadFile(name string) (scenario.ScenarioPack, error) {
 			TrustSignals:     append([]string(nil), item.TrustSignals...),
 			ExpectedOutcomes: append([]string(nil), item.ExpectedOutcomes...),
 			Tags:             append([]string(nil), item.Tags...),
-			CreatedAt:        now,
+			FeatureModel: scenario.FeatureTierModel{
+				TierA: append([]string(nil), item.FeatureModel.TierA...),
+				TierB: append([]string(nil), item.FeatureModel.TierB...),
+				TierC: append([]string(nil), item.FeatureModel.TierC...),
+			},
+			CreatedAt: now,
 		}
 
 		pack.Scenarios = append(pack.Scenarios, entry)
@@ -157,12 +166,21 @@ type scenarioPackFile struct {
 
 type scenarioFileItem struct {
 	ID               string   `json:"id"`
+	Code             string   `json:"code"`
 	Name             string   `json:"name"`
 	Version          string   `json:"version"`
 	ScenarioType     string   `json:"scenario_type"`
+	Family           string   `json:"family"`
+	SetRole          string   `json:"set_role"`
+	VariantID        string   `json:"variant_id"`
 	Description      string   `json:"description"`
 	Actors           []string `json:"actors"`
 	TrustSignals     []string `json:"trust_signals"`
 	ExpectedOutcomes []string `json:"expected_outcomes"`
 	Tags             []string `json:"tags"`
+	FeatureModel     struct {
+		TierA []string `json:"tier_a"`
+		TierB []string `json:"tier_b"`
+		TierC []string `json:"tier_c"`
+	} `json:"feature_model"`
 }

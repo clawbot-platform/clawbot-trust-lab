@@ -1,30 +1,177 @@
 {
   "id": "commerce-pack",
   "name": "Commerce World Pack",
-  "version": "v1",
-  "description": "Phase 5 deterministic commerce-world baseline scenarios for trust-lab execution.",
+  "version": "v2",
+  "description": "Phase 9 deterministic agentic-commerce scenarios covering human baseline, benign agentic use, and suspicious refund behavior.",
   "scenarios": [
     {
+      "id": "commerce-h1-direct-human-purchase",
+      "code": "H1",
+      "name": "Direct Human Purchase",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "A direct human purchase with ordinary commerce signals and no delegated action.",
+      "actors": ["buyer", "merchant"],
+      "trust_signals": ["human-present", "normal-amount", "no-delegation"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-accepted"],
+      "tags": ["commerce", "phase-9", "human-baseline", "stable"],
+      "feature_model": {
+        "tier_a": ["amount", "currency", "merchant_category", "refund_indicator"],
+        "tier_b": ["buyer_history", "merchant_history", "repeat_attempt_count"],
+        "tier_c": []
+      }
+    },
+    {
+      "id": "commerce-h2-human-refund-valid-history",
+      "code": "H2",
+      "name": "Human Refund with Valid History",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "A human refund request with valid order history and approval evidence.",
+      "actors": ["buyer", "merchant", "support-reviewer"],
+      "trust_signals": ["human-present", "refund-history-valid", "approval-present"],
+      "expected_outcomes": ["refund-requested", "trust-decision-accepted", "replay-case-recorded"],
+      "tags": ["commerce", "phase-9", "human-baseline", "stable"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "order_age", "amount"],
+        "tier_b": ["historical_refund_rate", "approval_history"],
+        "tier_c": []
+      }
+    },
+    {
+      "id": "commerce-a1-agent-assisted-purchase-valid-controls",
+      "code": "A1",
+      "name": "Agent-Assisted Purchase with Valid Controls",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "An assistant helps place an order with active mandate coverage and strong provenance context.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["delegation-visible", "active-mandate", "strong-provenance"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-accepted", "replay-case-recorded"],
+      "tags": ["commerce", "phase-9", "agentic", "stable"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["buyer_history", "merchant_history", "recent_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-a2-fully-delegated-replenishment-purchase",
+      "code": "A2",
+      "name": "Fully Delegated Replenishment Purchase",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "A fully delegated replenishment purchase stays inside a previously observed merchant and product scope.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["fully-delegated", "merchant-in-policy-scope", "historical-pattern-match"],
+      "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-accepted"],
+      "tags": ["commerce", "phase-9", "agentic", "stable", "replenishment"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "recurring_purchase_pattern"],
+        "tier_b": ["merchant_scope_history", "category_history", "product_repeat_match"],
+        "tier_c": ["mandate_status", "provenance_confidence", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-a3-agent-assisted-refund-approval-evidence",
+      "code": "A3",
+      "name": "Agent-Assisted Refund with Approval Evidence",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "An agent assists with a refund but approval evidence and order history remain intact.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["delegation-visible", "approval-present", "valid-refund-history"],
+      "expected_outcomes": ["refund-requested", "trust-decision-accepted", "replay-case-recorded"],
+      "tags": ["commerce", "phase-9", "agentic", "stable", "refund"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["historical_refund_rate", "approval_history", "recent_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-s1-refund-weak-authorization",
+      "code": "S1",
+      "name": "Refund Attempt with Weak or Missing Authorization",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "A refund is attempted without sufficient approval or delegated authority, creating an explainable high-risk baseline case.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["expired-mandate", "weak-provenance", "missing-approval"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
+      "tags": ["commerce", "phase-9", "suspicious", "stable", "refund"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["historical_refund_rate", "repeat_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence", "approval_evidence"]
+      }
+    },
+    {
+      "id": "commerce-s4-repeated-agent-refund-attempts",
+      "code": "S4",
+      "name": "Repeated Agent Refund Attempts",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "stable",
+      "description": "An agent repeatedly attempts refunds against similar orders, testing whether history-based escalation survives over time.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["repeat-refund-pattern", "agent-initiated", "step-up-history"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
+      "tags": ["commerce", "phase-9", "suspicious", "stable", "repeat-pattern"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["repeat_attempt_count", "historical_refund_rate", "prior_review_outcomes"],
+        "tier_c": ["mandate_status", "approval_evidence", "delegation_mode"]
+      }
+    },
+    {
       "id": "commerce-clean-agent-assisted-purchase",
+      "code": "A1-legacy",
       "name": "Clean Agent-Assisted Purchase",
       "version": "v1",
       "scenario_type": "commerce_purchase",
-      "description": "A delegated assistant submits an order with mandate and provenance coverage, leading to an accepted trust decision and authorized payment.",
+      "family": "commerce",
+      "description": "Legacy alias preserved for historical replay compatibility.",
       "actors": ["operator", "reviewer"],
       "trust_signals": ["active-mandate", "attached-provenance", "delegation-visible"],
       "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-accepted", "replay-case-recorded"],
-      "tags": ["commerce", "phase-5", "clean-flow"]
+      "tags": ["commerce", "legacy-alias"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["buyer_history", "merchant_history"],
+        "tier_c": ["mandate_status", "provenance_confidence"]
+      }
     },
     {
       "id": "commerce-suspicious-refund-attempt",
+      "code": "S1-legacy",
       "name": "Suspicious Refund Attempt",
       "version": "v1",
       "scenario_type": "commerce_refund_review",
-      "description": "A refund is requested by an agent without strong authority, producing a step-up trust decision and explicit trust failure events.",
+      "family": "commerce",
+      "description": "Legacy alias preserved for historical replay compatibility.",
       "actors": ["operator", "reviewer"],
       "trust_signals": ["expired-mandate", "weak-provenance", "missing-approval"],
       "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
-      "tags": ["commerce", "phase-5", "suspicious-flow"]
+      "tags": ["commerce", "legacy-alias"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["historical_refund_rate", "repeat_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence", "approval_evidence"]
+      }
     }
   ]
 }

@@ -1,6 +1,8 @@
 import type {
   BenchmarkRound,
+  BenchmarkRecommendation,
   DetectionResult,
+  LongRunSummary,
   PromotionDetail,
   PromotionRecord,
   PromotionReview,
@@ -31,11 +33,18 @@ export const previousRound: BenchmarkRound = {
     promotion_count: 0,
     replay_pass_rate: 1,
     robustness_outcome: "mixed",
-    important_findings: ["Baseline challenger set fully caught."]
+    important_findings: ["Baseline challenger set fully caught."],
+    evaluation_mode: "shadow",
+    blocking_mode: "recommendation_only",
+    existing_control_integration_note: "Run beside an incumbent fraud stack.",
+    recommended_follow_up: "Continue observing in shadow mode.",
+    recommendations: 1,
+    tier_c_usage_count: 0
   },
   scenario_results: [],
   promotion_results: [],
   delta: [],
+  recommendations: [],
   reports: {
     round_id: "round-20260324120000",
     directory: "./reports/round-20260324120000",
@@ -68,7 +77,13 @@ export const currentRound: BenchmarkRound = {
     important_findings: [
       "Weakened provenance challenger still evaluated as clean.",
       "Replay regression remained stable for the refund case."
-    ]
+    ],
+    evaluation_mode: "shadow",
+    blocking_mode: "recommendation_only",
+    existing_control_integration_note: "Run beside an incumbent fraud stack.",
+    recommended_follow_up: "Add promoted challenger cases into replay and keep monitoring in shadow mode.",
+    recommendations: 2,
+    tier_c_usage_count: 1
   },
   scenario_results: [
     {
@@ -110,6 +125,45 @@ export const currentRound: BenchmarkRound = {
       scenario_result_ref: "scenario-result-1",
       promoted: true,
       created_at: "2026-03-25T12:00:00Z"
+    },
+    {
+      id: "promo-2",
+      round_id: "round-20260325120000",
+      scenario_id: "commerce-s4-repeated-agent-refund-attempts",
+      challenger_variant_id: "variant-repeat-attempt",
+      promotion_reason: "meaningful_regression",
+      rationale: "Repeated refund attempts remained too permissive across replay context.",
+      detection_result_ref: "det-3",
+      replay_case_ref: "rc-2",
+      scenario_result_ref: "scenario-result-2",
+      promoted: true,
+      created_at: "2026-03-25T12:03:00Z"
+    },
+    {
+      id: "promo-3",
+      round_id: "round-20260325120000",
+      scenario_id: "commerce-s5-merchant-scope-drift",
+      challenger_variant_id: "variant-scope-drift",
+      promotion_reason: "new_trust_gap_pattern",
+      rationale: "Delegated purchase drifted outside merchant scope without enough friction.",
+      detection_result_ref: "det-4",
+      replay_case_ref: "rc-3",
+      scenario_result_ref: "scenario-result-3",
+      promoted: true,
+      created_at: "2026-03-25T12:04:00Z"
+    },
+    {
+      id: "promo-4",
+      round_id: "round-20260324120000",
+      scenario_id: "commerce-v7-high-value-delegated-purchase",
+      challenger_variant_id: "variant-high-value",
+      promotion_reason: "suspicious_behavior_scored_too_low",
+      rationale: "High-value delegated purchase still landed below the expected review threshold.",
+      detection_result_ref: "det-5",
+      replay_case_ref: "rc-4",
+      scenario_result_ref: "scenario-result-4",
+      promoted: true,
+      created_at: "2026-03-24T12:04:00Z"
     }
   ],
   delta: [
@@ -123,6 +177,43 @@ export const currentRound: BenchmarkRound = {
       newly_triggered_rules: [],
       cleared_rules: ["missing_provenance_sensitive_action"],
       recommendation_changed: true
+    }
+  ],
+  recommendations: [
+    {
+      id: "rec-round-20260325120000-replay",
+      type: "add_to_replay_stable_set",
+      rationale: "Promoted challenger cases should move into replay.",
+      priority: "high",
+      linked_round_id: "round-20260325120000",
+      linked_scenario_ids: ["commerce-challenger-weakened-provenance-purchase"],
+      linked_promotion_ids: ["promo-1"],
+      supporting_rule_ids: ["missing_provenance_sensitive_action"],
+      suggested_action: "Add the promoted challenger into replay coverage.",
+      existing_control_integration_note: "Use this as a recommendation beside the incumbent refund and delegated-purchase rules."
+    },
+    {
+      id: "rec-round-20260325120000-shadow",
+      type: "monitor_in_shadow_mode",
+      rationale: "Keep the harness beside the incumbent fraud stack.",
+      priority: "low",
+      linked_round_id: "round-20260325120000",
+      linked_scenario_ids: ["commerce-challenger-weakened-provenance-purchase"],
+      supporting_rule_ids: ["repeat_suspicious_context"],
+      suggested_action: "Continue comparing sidecar recommendations with production outcomes.",
+      existing_control_integration_note: "No production decline is required; compare recommendation drift against current review queues."
+    },
+    {
+      id: "rec-round-20260325120000-refund",
+      type: "require_step_up_for_delegated_refunds",
+      rationale: "Repeated agent refunds still need stronger manual friction when approval evidence is missing.",
+      priority: "medium",
+      linked_round_id: "round-20260325120000",
+      linked_scenario_ids: ["commerce-s4-repeated-agent-refund-attempts"],
+      linked_promotion_ids: ["promo-2"],
+      supporting_rule_ids: ["refund_weak_authorization", "agent_refund_without_approval"],
+      suggested_action: "Route delegated refund retries into step-up or analyst review instead of straight-through handling.",
+      existing_control_integration_note: "Add this as a sidecar recommendation before changing production refund policy."
     }
   ],
   reports: {
@@ -158,6 +249,25 @@ export const roundComparison: RoundComparison = {
   detection_delta_count: 1
 };
 
+export const longRunSummary: LongRunSummary = {
+  rounds_executed: 2,
+  promotions_over_time: [
+    { round_id: previousRound.id, value: 0 },
+    { round_id: currentRound.id, value: 1 }
+  ],
+  replay_pass_rate_over_time: [
+    { round_id: previousRound.id, value: 1 },
+    { round_id: currentRound.id, value: 0.67 }
+  ],
+  new_blind_spots_discovered: 1,
+  regressions_observed: 0,
+  recommendation_counts_by_type: {
+    add_to_replay_stable_set: 1,
+    monitor_in_shadow_mode: 1
+  },
+  top_recurring_evasion_patterns: ["Weakened provenance challenger still evaluated as clean."]
+};
+
 export const detectionResult: DetectionResult = {
   id: "det-1",
   scenario_id: "commerce-challenger-weakened-provenance-purchase",
@@ -170,7 +280,10 @@ export const detectionResult: DetectionResult = {
   replay_case_refs: ["rc-1"],
   trust_decision_refs: ["trust-decision-1"],
   metadata: {
-    memory_context_present: true
+    memory_context_present: true,
+    tier_profile: {
+      tier_c_used: true
+    }
   }
 };
 
@@ -202,6 +315,46 @@ export const promotionRecord: PromotionRecord = {
   review: initialPromotionReview
 };
 
+export const promotionRecords: PromotionRecord[] = [
+  {
+    round_id: currentRound.id,
+    promotion: currentRound.promotion_results[0],
+    review: initialPromotionReview
+  },
+  {
+    round_id: currentRound.id,
+    promotion: currentRound.promotion_results[1],
+    review: {
+      promotion_id: "promo-2",
+      status: "accepted",
+      note: {
+        id: "note-3",
+        body: "Keep this in replay until refund retry behavior stabilizes.",
+        created_at: "2026-03-25T12:12:00Z"
+      },
+      updated_at: "2026-03-25T12:12:00Z"
+    }
+  },
+  {
+    round_id: currentRound.id,
+    promotion: currentRound.promotion_results[2]
+  },
+  {
+    round_id: previousRound.id,
+    promotion: currentRound.promotion_results[3],
+    review: {
+      promotion_id: "promo-4",
+      status: "duplicate",
+      note: {
+        id: "note-4",
+        body: "Covered by an earlier high-value delegated purchase replay case.",
+        created_at: "2026-03-24T12:10:00Z"
+      },
+      updated_at: "2026-03-24T12:10:00Z"
+    }
+  }
+];
+
 export const promotionDetail: PromotionDetail = {
   round_id: currentRound.id,
   promotion: currentRound.promotion_results[0],
@@ -209,6 +362,8 @@ export const promotionDetail: PromotionDetail = {
   detection_result: detectionResult,
   scenario_result: currentRound.scenario_results[0]
 };
+
+export const recommendations: BenchmarkRecommendation[] = currentRound.recommendations;
 
 export const reportDescriptors: ReportDescriptor[] = currentRound.reports.artifacts.map((artifact) => ({
   round_id: currentRound.id,

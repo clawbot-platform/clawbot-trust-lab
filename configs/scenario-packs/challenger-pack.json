@@ -1,41 +1,265 @@
 {
   "id": "challenger-pack",
   "name": "Commerce Challenger Pack",
-  "version": "v1",
-  "description": "Phase 7 deterministic challenger variants for the Red Queen MVP benchmark loop.",
+  "version": "v2",
+  "description": "Phase 9 deterministic challenger scenarios probing delegated-action blind spots for the Red Queen loop.",
   "scenarios": [
     {
+      "id": "commerce-s2-delegated-purchase-weak-provenance",
+      "code": "S2",
+      "name": "Delegated Purchase with Weak Provenance",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v1-weakened-provenance",
+      "description": "A delegated purchase carries provenance, but the provenance evidence is materially weak.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["active-mandate", "weak-provenance", "delegation-visible"],
+      "expected_outcomes": ["order-created", "payment-authorized", "candidate-replay-promotion"],
+      "tags": ["commerce", "phase-9", "challenger", "suspicious", "weak-provenance"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["merchant_scope_history", "buyer_history"],
+        "tier_c": ["provenance_confidence", "mandate_status", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-s3-approval-removed-after-authorization",
+      "code": "S3",
+      "name": "Approval Removed After Initial Authorization",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v3-approval-removed",
+      "description": "A refund begins with valid authority but approval evidence disappears before execution.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["active-mandate", "approval-removed", "agent-refund"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up", "candidate-replay-promotion"],
+      "tags": ["commerce", "phase-9", "challenger", "approval-removed"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["approval_history", "repeat_attempt_count"],
+        "tier_c": ["approval_evidence", "mandate_status", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-s5-merchant-scope-drift-delegated-action",
+      "code": "S5",
+      "name": "Merchant or Category Scope Drift Under Delegated Action",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v6-merchant-scope-drift",
+      "description": "A delegated purchase attempts to move outside the buyer's prior merchant or category scope.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["delegation-visible", "merchant-scope-drift", "category-drift"],
+      "expected_outcomes": ["order-created", "trust-decision-review-required", "candidate-replay-promotion"],
+      "tags": ["commerce", "phase-9", "challenger", "scope-drift"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["merchant_scope_history", "category_history", "recent_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-v1-weakened-provenance",
+      "code": "V1",
+      "name": "Variant Weakened Provenance",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v1-weakened-provenance",
+      "description": "Variant that weakens provenance while keeping the rest of a delegated purchase intact.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["weak-provenance"],
+      "expected_outcomes": ["order-created", "trust-gap-low-provenance"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "weakened-provenance"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["buyer_history"],
+        "tier_c": ["provenance_confidence"]
+      }
+    },
+    {
+      "id": "commerce-v2-expired-inactive-mandate",
+      "code": "V2",
+      "name": "Variant Expired or Inactive Mandate",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v2-expired-mandate",
+      "description": "Variant that expires mandate coverage before a delegated action executes.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["expired-mandate"],
+      "expected_outcomes": ["order-created", "trust-decision-review-required"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "expired-mandate"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["recent_attempt_count"],
+        "tier_c": ["mandate_status", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-v3-approval-removed",
+      "code": "V3",
+      "name": "Variant Approval Removed",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v3-approval-removed",
+      "description": "Variant that removes approval evidence from an agent-driven refund.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["approval-removed", "agent-refund"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "approval-removed"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "delegated_indicator"],
+        "tier_b": ["approval_history"],
+        "tier_c": ["approval_evidence", "delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-v4-actor-switch-human-to-agent",
+      "code": "V4",
+      "name": "Variant Actor Switch from Human to Agent",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v4-actor-switch",
+      "description": "Variant that flips a previously human refund path into an agent-driven refund without strengthening controls.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["actor-switch", "delegation-visible"],
+      "expected_outcomes": ["refund-requested", "trust-decision-review-required"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "actor-switch"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "delegated_indicator"],
+        "tier_b": ["recent_attempt_count", "approval_history"],
+        "tier_c": ["delegation_mode", "approval_evidence"]
+      }
+    },
+    {
+      "id": "commerce-v5-repeat-attempt-escalation",
+      "code": "V5",
+      "name": "Variant Repeat Attempt Escalation",
+      "version": "v2",
+      "scenario_type": "commerce_refund_review",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v5-repeat-attempt-escalation",
+      "description": "Variant that escalates the number of prior similar refund attempts.",
+      "actors": ["buyer", "agent", "support-reviewer"],
+      "trust_signals": ["repeat-refund-pattern", "agent-refund"],
+      "expected_outcomes": ["refund-requested", "trust-decision-step-up"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "repeat-attempt"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["repeat_attempt_count", "historical_refund_rate"],
+        "tier_c": ["delegation_mode"]
+      }
+    },
+    {
+      "id": "commerce-v6-merchant-scope-drift",
+      "code": "V6",
+      "name": "Variant Merchant Scope Drift",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v6-merchant-scope-drift",
+      "description": "Variant that moves a delegated purchase into a new merchant scope.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["merchant-scope-drift", "delegation-visible"],
+      "expected_outcomes": ["order-created", "trust-decision-review-required"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "scope-drift"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["merchant_scope_history", "category_history"],
+        "tier_c": ["delegation_mode", "mandate_status"]
+      }
+    },
+    {
+      "id": "commerce-v7-high-value-delegated-purchase",
+      "code": "V7",
+      "name": "Variant High-Value Delegated Purchase",
+      "version": "v2",
+      "scenario_type": "commerce_purchase",
+      "family": "commerce",
+      "set_role": "living",
+      "variant_id": "variant-v7-high-value-delegated-purchase",
+      "description": "Variant that materially increases delegated purchase value beyond the usual buyer pattern.",
+      "actors": ["buyer", "agent", "merchant"],
+      "trust_signals": ["high-value-purchase", "delegation-visible"],
+      "expected_outcomes": ["order-created", "trust-decision-review-required"],
+      "tags": ["commerce", "phase-9", "challenger", "variant", "high-value"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["buyer_spend_baseline", "merchant_scope_history"],
+        "tier_c": ["mandate_status", "delegation_mode"]
+      }
+    },
+    {
       "id": "commerce-challenger-weakened-provenance-purchase",
+      "code": "V1-legacy",
       "name": "Challenger Weakened Provenance Purchase",
       "version": "v1",
       "scenario_type": "commerce_purchase",
-      "description": "A delegated purchase keeps provenance attached but weakens provenance confidence enough to probe a baseline blind spot.",
+      "family": "commerce",
+      "variant_id": "variant-weakened-provenance",
+      "description": "Legacy alias preserved for historical replay compatibility.",
       "actors": ["operator", "reviewer"],
       "trust_signals": ["active-mandate", "weak-provenance", "delegation-visible"],
-      "expected_outcomes": ["order-created", "payment-authorized", "trust-gap-low-provenance", "candidate-replay-promotion"],
-      "tags": ["commerce", "phase-7", "challenger", "weakened-provenance"]
+      "expected_outcomes": ["order-created", "payment-authorized", "candidate-replay-promotion"],
+      "tags": ["commerce", "legacy-alias"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["merchant_scope_history"],
+        "tier_c": ["provenance_confidence", "mandate_status"]
+      }
     },
     {
       "id": "commerce-challenger-expired-mandate-purchase",
+      "code": "V2-legacy",
       "name": "Challenger Expired Mandate Purchase",
       "version": "v1",
       "scenario_type": "commerce_purchase",
-      "description": "A delegated purchase proceeds with expired authority to confirm the detector still catches mandate gaps.",
+      "family": "commerce",
+      "variant_id": "variant-expired-mandate",
+      "description": "Legacy alias preserved for historical replay compatibility.",
       "actors": ["operator", "reviewer"],
       "trust_signals": ["expired-mandate", "attached-provenance", "delegation-visible"],
       "expected_outcomes": ["order-created", "payment-authorized", "trust-decision-review-required"],
-      "tags": ["commerce", "phase-7", "challenger", "expired-mandate"]
+      "tags": ["commerce", "legacy-alias"],
+      "feature_model": {
+        "tier_a": ["amount", "merchant_category", "delegated_indicator"],
+        "tier_b": ["recent_attempt_count"],
+        "tier_c": ["mandate_status", "provenance_confidence"]
+      }
     },
     {
       "id": "commerce-challenger-approval-removed-refund",
+      "code": "V3-legacy",
       "name": "Challenger Approval Removed Refund",
       "version": "v1",
       "scenario_type": "commerce_refund_review",
-      "description": "An agent-driven refund path removes approval evidence to verify the baseline still escalates refund risk.",
+      "family": "commerce",
+      "variant_id": "variant-approval-removed",
+      "description": "Legacy alias preserved for historical replay compatibility.",
       "actors": ["operator", "reviewer"],
       "trust_signals": ["active-mandate", "attached-provenance", "approval-removed"],
       "expected_outcomes": ["refund-requested", "trust-decision-step-up", "replay-case-recorded"],
-      "tags": ["commerce", "phase-7", "challenger", "approval-removed"]
+      "tags": ["commerce", "legacy-alias"],
+      "feature_model": {
+        "tier_a": ["refund_indicator", "amount", "delegated_indicator"],
+        "tier_b": ["approval_history"],
+        "tier_c": ["approval_evidence", "mandate_status"]
+      }
     }
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "id": "rc-s1-refund-weak-authorization",
+  "scenario_id": "commerce-s1-refund-weak-authorization",
+  "trust_artifact_refs": [
+    "ta-s1-refund-weak-authorization"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Refund attempt required step-up because authority, provenance, and approval coverage were insufficient.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-s1-refund-weak-authorization.json"
+  },
+  "promotion": {
+    "status": "hold",
+    "reason": "Suspicious refund path should remain replayable for regression testing.",
+    "promoted": false
+  },
+  "recorded_at": "2026-03-25T14:10:30Z"
+}

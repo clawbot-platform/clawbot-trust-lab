@@ -1,0 +1,19 @@
+{
+  "id": "rc-h2-human-refund-valid-history",
+  "scenario_id": "commerce-h2-human-refund-valid-history",
+  "trust_artifact_refs": [
+    "ta-h2-human-refund-valid-history"
+  ],
+  "benchmark_round_ref": "phase-9-red-queen",
+  "outcome_summary": "Human refund request carried valid history and approval evidence.",
+  "archive_ref": {
+    "bucket": "local-replay-archive",
+    "key": "rc-h2-human-refund-valid-history.json"
+  },
+  "promotion": {
+    "status": "promote",
+    "reason": "Human refund baseline should remain in replay coverage.",
+    "promoted": true
+  },
+  "recorded_at": "2026-03-25T10:10:30Z"
+}

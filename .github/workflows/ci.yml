@@ -7,24 +7,44 @@ on:
   pull_request:
 
 jobs:
-  test:
+  backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
       - name: Check formatting
         run: |
-          fmt_out=$(gofmt -l .)
+          fmt_out=$(find cmd internal -name '*.go' -print | xargs gofmt -l)
           if [ -n "$fmt_out" ]; then
             echo "$fmt_out"
             exit 1
           fi
       - name: Go vet
         run: go vet ./...
-      - name: Go test
-        run: go test ./...
+      - name: Go test with coverage
+        run: go test -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Go coverage summary
+        run: |
+          go tool cover -func=coverage.out | tee coverage.txt
+          {
+            echo "## Go coverage"
+            echo
+            echo '```text'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Go coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: |
+            coverage.out
+            coverage.txt
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -41,7 +61,16 @@ jobs:
         run: npm ci
       - name: Web lint
         run: npm run lint
-      - name: Web test
-        run: npm run test
+      - name: Web test with coverage
+        run: npm run test:coverage
       - name: Web build
         run: npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Web E2E
+        run: npm run test:e2e
+      - name: Upload web coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: web/coverage/lcov.info
