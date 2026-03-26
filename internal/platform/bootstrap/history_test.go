@@ -366,6 +366,157 @@ func TestHistoricalHelpersCoverStatusAndSortFallbacks(t *testing.T) {
 	}
 }
 
+func TestLoadHistoricalStateMissingReportsDirReturnsEmpty(t *testing.T) {
+	missingDir := filepath.Join(t.TempDir(), "does-not-exist")
+	state := LoadHistoricalState(missingDir, nil)
+	if len(state.Rounds) != 0 || len(state.DetectionResults) != 0 {
+		t.Fatalf("expected empty historical state for missing dir, got %#v", state)
+	}
+}
+
+func TestLoadHistoricalRoundMissingSummaryReturnsFalse(t *testing.T) {
+	reportsDir := t.TempDir()
+	roundDir := filepath.Join(reportsDir, "round-no-summary")
+	if err := os.MkdirAll(roundDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	round, ok, err := loadHistoricalRound(reportsDir, "round-no-summary", slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)))
+	if err != nil {
+		t.Fatalf("loadHistoricalRound() error = %v", err)
+	}
+	if ok {
+		t.Fatalf("expected missing summary to skip round, got %#v", round)
+	}
+}
+
+func TestLoadHistoricalRoundAppliesPersistedRecommendationReport(t *testing.T) {
+	reportsDir := t.TempDir()
+	roundID := "round-with-recommendations"
+	roundDir := filepath.Join(reportsDir, roundID)
+	if err := os.MkdirAll(roundDir, 0o750); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	writeFixtureJSON(t, filepath.Join(roundDir, servicereporting.ArtifactRoundSummaryJSON), benchmark.BenchmarkRound{
+		ID:             roundID,
+		ScenarioFamily: "commerce",
+		Summary: benchmark.RoundSummary{
+			RoundID:        roundID,
+			ScenarioFamily: "commerce",
+		},
+	})
+	writeFixtureJSON(t, filepath.Join(roundDir, servicereporting.ArtifactRecommendationJSON), benchmark.RecommendationReport{
+		RoundID:                        roundID,
+		EvaluationMode:                 "shadow",
+		BlockingMode:                   "recommendation_only",
+		ExistingControlIntegrationNote: "Run beside current fraud controls.",
+		RecommendedFollowUp:            "Review promoted refund cases.",
+		Recommendations: []benchmark.Recommendation{{
+			ID:                "rec-1",
+			LinkedRoundID:     roundID,
+			LinkedScenarioIDs: []string{"commerce-s1-refund-weak-authorization"},
+		}},
+	})
+
+	round, ok, err := loadHistoricalRound(reportsDir, roundID, slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)))
+	if err != nil {
+		t.Fatalf("loadHistoricalRound() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("expected historical round to load")
+	}
+	if round.Summary.EvaluationMode != "shadow" || round.Summary.BlockingMode != "recommendation_only" {
+		t.Fatalf("expected production-bridge fields from recommendation report, got %#v", round.Summary)
+	}
+	if round.Summary.Recommendations != 1 || len(round.Recommendations) != 1 {
+		t.Fatalf("expected recommendations from persisted artifact, got %#v %#v", round.Summary, round.Recommendations)
+	}
+}
+
+func TestLoadHistoricalRoundRejectsMalformedOptionalArtifacts(t *testing.T) {
+	tests := []struct {
+		name     string
+		artifact string
+	}{
+		{name: "promotion", artifact: servicereporting.ArtifactPromotionReport},
+		{name: "delta", artifact: servicereporting.ArtifactDetectionDeltaJSON},
+		{name: "recommendation", artifact: servicereporting.ArtifactRecommendationJSON},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			reportsDir := t.TempDir()
+			roundID := "round-bad-" + tc.name
+			roundDir := filepath.Join(reportsDir, roundID)
+			if err := os.MkdirAll(roundDir, 0o750); err != nil {
+				t.Fatalf("MkdirAll() error = %v", err)
+			}
+			writeFixtureJSON(t, filepath.Join(roundDir, servicereporting.ArtifactRoundSummaryJSON), benchmark.BenchmarkRound{
+				ID:             roundID,
+				ScenarioFamily: "commerce",
+				Summary: benchmark.RoundSummary{
+					RoundID:        roundID,
+					ScenarioFamily: "commerce",
+				},
+			})
+			if err := os.WriteFile(filepath.Join(roundDir, tc.artifact), []byte("{bad-json"), 0o600); err != nil {
+				t.Fatalf("WriteFile() error = %v", err)
+			}
+
+			if _, _, err := loadHistoricalRound(reportsDir, roundID, slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))); err == nil {
+				t.Fatal("expected malformed optional artifact to fail round load")
+			}
+		})
+	}
+}
+
+func TestNormalizeHistoricalRoundAndSummaryCounts(t *testing.T) {
+	round := benchmark.BenchmarkRound{
+		ScenarioFamily:        "commerce",
+		StableScenarioRefs:    []string{"stable-1", "stable-2"},
+		ChallengerVariantRefs: []string{"living-1"},
+		PromotionResults:      []benchmark.PromotionDecision{{ID: "promo-1"}},
+		Summary:               benchmark.RoundSummary{},
+	}
+
+	normalizeHistoricalRound(&round, "round-normalized", "/tmp/round-normalized")
+	ensureHistoricalSummaryCounts(&round)
+
+	if round.ID != "round-normalized" || round.ReportDir != "/tmp/round-normalized" {
+		t.Fatalf("expected round identity to be normalized, got %#v", round)
+	}
+	if round.Summary.RoundID != "round-normalized" || round.Reports.RoundID != "round-normalized" {
+		t.Fatalf("expected round/report ids to be normalized, got %#v", round)
+	}
+	if round.Summary.ScenarioFamily != "commerce" {
+		t.Fatalf("expected scenario family to carry through, got %#v", round.Summary)
+	}
+	if round.Summary.StableScenarioCount != 2 || round.Summary.ChallengerCount != 1 || round.Summary.PromotionCount != 1 {
+		t.Fatalf("expected summary counts to be backfilled, got %#v", round.Summary)
+	}
+}
+
+func TestListReportArtifactsSkipsHiddenFilesAndDirectories(t *testing.T) {
+	roundDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(roundDir, "nested"), 0o750); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	for name, body := range map[string]string{
+		servicereporting.ArtifactRoundSummaryJSON: "{}\n",
+		".hidden.json": "{}\n",
+	} {
+		if err := os.WriteFile(filepath.Join(roundDir, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", name, err)
+		}
+	}
+
+	index := listReportArtifacts("round-filtered", roundDir)
+	if len(index.Artifacts) != 1 || index.Artifacts[0].Name != servicereporting.ArtifactRoundSummaryJSON {
+		t.Fatalf("expected only visible top-level artifacts, got %#v", index.Artifacts)
+	}
+}
+
 func writeFixtureJSON(t *testing.T, path string, payload any) {
 	t.Helper()
 	body, err := json.MarshalIndent(payload, "", "  ")

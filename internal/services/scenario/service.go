@@ -611,6 +611,8 @@ func (s *Service) completeScenarioResult(ctx context.Context, item domainscenari
 }
 
 func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, error) {
+	const merchantID = "merchant-orbit-books"
+	const humanID = "human-alex"
 	switch item.ID {
 	case "commerce-h1-direct-human-purchase":
 		return purchaseBlueprint(purchaseProfile{
@@ -645,7 +647,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			decisionReasons:      []string{"valid_refund_history", "human_requested_refund", "approval_present"},
 			paymentMethod:        "card_on_file",
 			reason:               "Human requested refund with valid order history",
-			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 10, 8, 15, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 10, 8, 15, 0, time.UTC)},
 			outcomeSummary:       "Human refund request carried valid history and approval evidence.",
 			replayRecommendation: "promote",
 			replayReason:         "Human refund baseline should remain in replay coverage.",
@@ -721,7 +723,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			reason:               "Agent-assisted refund with explicit approval evidence",
 			mandate:              &mandateBlueprint{Status: "active", AllowedActions: []string{"submit_order", "request_refund"}, SpendingLimit: 15000, ExpiresAt: time.Date(2026, 3, 26, 13, 0, 0, 0, time.UTC)},
 			provenance:           &provenanceBlueprint{SourceType: "conversation", SourceRef: item.ID, Confidence: 0.83, CreatedAt: time.Date(2026, 3, 25, 13, 0, 30, 0, time.UTC)},
-			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 13, 10, 10, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 13, 10, 10, 0, time.UTC)},
 			outcomeSummary:       "Agent-assisted refund completed with approval evidence and valid delegated controls.",
 			replayRecommendation: "promote",
 			replayReason:         "Approved delegated refund baseline should remain replayable.",
@@ -748,7 +750,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			reason:               "Agent attempted refund without strong authority",
 			mandate:              &mandateBlueprint{Status: "expired", AllowedActions: []string{"submit_order"}, SpendingLimit: 15000, ExpiresAt: time.Date(2026, 3, 25, 13, 59, 0, 0, time.UTC)},
 			provenance:           &provenanceBlueprint{SourceType: "conversation", SourceRef: item.ID, Confidence: 0.41, CreatedAt: time.Date(2026, 3, 25, 14, 7, 0, 0, time.UTC)},
-			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 14, 8, 10, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 14, 8, 10, 0, time.UTC)},
 			outcomeSummary:       "Refund attempt required step-up because authority, provenance, and approval coverage were insufficient.",
 			replayRecommendation: "hold",
 			replayReason:         "Suspicious refund path should remain replayable for regression testing.",
@@ -775,7 +777,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			reason:               "Repeated agent refund attempts crossed the baseline threshold",
 			mandate:              &mandateBlueprint{Status: "active", AllowedActions: []string{"submit_order", "request_refund"}, SpendingLimit: 15000, ExpiresAt: time.Date(2026, 3, 26, 15, 0, 0, 0, time.UTC)},
 			provenance:           &provenanceBlueprint{SourceType: "task_list", SourceRef: item.ID, Confidence: 0.72, CreatedAt: time.Date(2026, 3, 25, 15, 5, 20, 0, time.UTC)},
-			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 15, 5, 30, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "approved", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 15, 5, 30, 0, time.UTC)},
 			outcomeSummary:       "Repeated agent refund attempts remained explainably suspicious because history increased concern.",
 			replayRecommendation: "hold",
 			replayReason:         "Repeat refund pattern should stay in the stable suspicious set.",
@@ -849,7 +851,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			reason:               "Refund requested after approval evidence was removed",
 			mandate:              &mandateBlueprint{Status: "active", AllowedActions: []string{"submit_order", "request_refund"}, SpendingLimit: 15000, ExpiresAt: time.Date(2026, 3, 26, 18, 0, 0, 0, time.UTC)},
 			provenance:           &provenanceBlueprint{SourceType: "conversation", SourceRef: item.ID, Confidence: 0.74, CreatedAt: time.Date(2026, 3, 25, 18, 0, 20, 0, time.UTC)},
-			approval:             &approvalBlueprint{Outcome: "removed", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 18, 6, 30, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "removed", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 18, 6, 30, 0, time.UTC)},
 			outcomeSummary:       "Agent-driven refund lost approval evidence before execution and required step-up.",
 			replayRecommendation: "hold",
 			replayReason:         "Approval-removed refund remains useful for replay regression.",
@@ -912,7 +914,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			decisionReasons:      []string{"actor_switch_to_agent", "approval_missing"},
 			paymentMethod:        "card_on_file",
 			reason:               "Refund flow switched from human to agent without strengthening controls",
-			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 20, 5, 10, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 20, 5, 10, 0, time.UTC)},
 			outcomeSummary:       "Refund path switched from human to agent without stronger approval controls.",
 			replayRecommendation: "candidate",
 			replayReason:         "Actor-switch challenger probes low-telemetry delegated action gaps.",
@@ -938,7 +940,7 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			decisionReasons:      []string{"repeat_refund_attempts", "agent_refund", "approval_missing"},
 			paymentMethod:        "delegated_card_on_file",
 			reason:               "Repeat refund attempts escalated above the baseline threshold",
-			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: "human-alex", CreatedAt: time.Date(2026, 3, 25, 21, 4, 10, 0, time.UTC)},
+			approval:             &approvalBlueprint{Outcome: "missing", ApproverID: humanID, CreatedAt: time.Date(2026, 3, 25, 21, 4, 10, 0, time.UTC)},
 			mandate:              &mandateBlueprint{Status: "active", AllowedActions: []string{"submit_order", "request_refund"}, SpendingLimit: 15000, ExpiresAt: time.Date(2026, 3, 26, 21, 0, 0, 0, time.UTC)},
 			outcomeSummary:       "Repeat refund attempts escalated concern even before any exotic agentic overlay fields were needed.",
 			replayRecommendation: "candidate",
@@ -961,14 +963,14 @@ func blueprintForScenario(item domainscenario.Scenario) (scenarioBlueprint, erro
 			decisionReasons:     []string{"high_value_delegated_purchase", "merchant_scope_match"},
 			paymentMethod:       "delegated_card_on_file",
 			merchant: commerce.Merchant{
-				ID:       "merchant-orbit-books",
+				ID:       merchantID,
 				Name:     "Orbit Books",
 				Category: "books",
 				Tags:     []string{"baseline", "high-value"},
 			},
 			product: commerce.Product{
 				ID:         "product-orbit-book-bundle-premium",
-				MerchantID: "merchant-orbit-books",
+				MerchantID: merchantID,
 				Name:       "Orbit Enterprise Reference Bundle",
 				Amount:     18900,
 				Currency:   "USD",
@@ -1149,6 +1151,8 @@ type worldSeed struct {
 
 func seedWorld() worldSeed {
 	principal := actors.PrincipalRef{PrincipalID: "buyer-alex", PrincipalType: "buyer"}
+	const merchantID = "merchant-orbit-books"
+	const humanID = "human-alex"
 	return worldSeed{
 		buyer: commerce.Buyer{
 			ID:       "buyer-alex",
@@ -1157,14 +1161,14 @@ func seedWorld() worldSeed {
 			Tags:     []string{"baseline", "trusted"},
 		},
 		merchant: commerce.Merchant{
-			ID:       "merchant-orbit-books",
+			ID:       merchantID,
 			Name:     "Orbit Books",
 			Category: "books",
 			Tags:     []string{"digital", "baseline"},
 		},
 		product: commerce.Product{
 			ID:         "product-orbit-book-1",
-			MerchantID: "merchant-orbit-books",
+			MerchantID: merchantID,
 			Name:       "Orbit Operations Handbook",
 			Amount:     4200,
 			Currency:   "USD",
@@ -1172,7 +1176,7 @@ func seedWorld() worldSeed {
 			Tags:       []string{"starter", "digital"},
 		},
 		human: actors.HumanActor{
-			ID:        "human-alex",
+			ID:        humanID,
 			Name:      "Alex Carter",
 			Type:      actors.ActorTypeHuman,
 			Principal: principal,
