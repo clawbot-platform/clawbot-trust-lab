@@ -154,8 +154,8 @@ func TestRunRoundCreatesReportsAndPromotion(t *testing.T) {
 	if round.Summary.RobustnessOutcome != domainbenchmark.RobustnessOutcomeNewBlindSpotDiscovered {
 		t.Fatalf("unexpected robustness outcome: %s", round.Summary.RobustnessOutcome)
 	}
-	if len(round.Reports.Artifacts) != 6 {
-		t.Fatalf("expected 6 report artifacts, got %d", len(round.Reports.Artifacts))
+	if len(round.Reports.Artifacts) != 8 {
+		t.Fatalf("expected 8 report artifacts, got %d", len(round.Reports.Artifacts))
 	}
 	for _, artifact := range round.Reports.Artifacts {
 		if _, err := os.Stat(artifact.Path); err != nil {

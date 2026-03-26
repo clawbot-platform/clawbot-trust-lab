@@ -1,68 +1,144 @@
-# Reporting Spec
+# DRQ Reporting Spec
 
-Phase 7 reporting exists to make each Red Queen round measurable and explainable.
+This document describes the Version 1 DRQ reporting surface in `clawbot-trust-lab`.
 
-## Required outputs
+It is separate from `scripts/version1_validation_report.py`.
 
-Each round writes these files under `reports/<round-id>/`:
+- `version1_validation_report.py` is the readiness and installability check
+- DRQ reporting inside trust-lab summarizes benchmark evidence and operator-reviewable findings
 
-1. `round-summary.json`
-2. `round-summary.md`
-3. `detection-delta.json`
-4. `promotion-report.json`
-5. `executive-summary.md`
+## Report types
 
-## Required content
+Version 1 supports three report types:
 
-At minimum the reports must capture:
+1. Round report
+2. 24-hour dry-run report
+3. 1-week management report
+
+All report generation reuses persisted round data. It does not rerun the benchmark.
+
+## Round report
+
+Every benchmark round now writes these files under `reports/<round-id>/`:
+
+- `round-summary.json`
+- `round-summary.md`
+- `round-report.json`
+- `round-report.md`
+- `detection-delta.json`
+- `promotion-report.json`
+- `recommendation-report.json`
+- `executive-summary.md`
+
+The round report is the richer DRQ summary for a single benchmark round.
+
+It includes:
 
 - round id
 - scenario family
-- stable scenario count
-- challenger count
-- replay retest count
-- promotions count
-- replay pass rate
-- robustness outcome
-- important findings
-- promoted case rationale
+- scenarios executed
+- promotions
+- recommendations
+- regressions derived from detection delta
+- production-bridge summary
+- Tier A / B / C availability and observed Tier C usage
+- notable challenger cases
 
-## Detection delta
+## 24-hour dry-run report
 
-The delta report compares the current round with the previous round when one exists.
+The dry-run report is generated on demand for the last 24 hours or an explicit time window.
 
-It should surface:
+Artifacts are written under `reports/daily/<window>/`:
 
-- status changes
-- score or severity changes
-- newly triggered rules
-- cleared rules
-- recommendation changes
+- `dry-run-report.json`
+- `dry-run-report.md`
 
-## Promotion report
+The dry-run report is intended to answer:
 
-Every promotion must include:
+- how many rounds completed in the window
+- how many promotions and recommendations were produced
+- which recommendation themes kept recurring
+- which replay-worthy cases emerged
+- whether the run looked operationally stable
 
-- scenario id
-- challenger variant id
-- promotion reason
-- rationale
-- linked detection result
-- linked replay case
+Version 1 currently records a generation-time health snapshot for control-plane and memory status.
+It does not yet persist a full degraded-period or recovery timeline, so the report says that explicitly instead of inventing incident history.
 
-Promotion cannot be implicit.
+## 1-week management report
 
-## Executive summary
+The management report is generated on demand for the last 7 days or an explicit time window.
 
-The executive summary should stay short and answer:
+Artifacts are written under `reports/management/<window>/`:
 
-- did the detector improve, regress, or expose a new blind spot
-- how many cases were promoted
-- what the most important finding was
-- what the next action should be
+- `management-report.json`
+- `management-report.md`
 
-## Stable vs living reporting rule
+The management report is executive-friendly and answers:
 
-Round reporting must keep stable-set and living-set performance visibly separate.
+- what DRQ found that the stable baseline alone did not
+- which scenarios repeatedly surfaced issues
+- which replay cases look strong enough for longer-lived baseline coverage
+- whether the system remained operationally usable in shadow mode
+- what next production-side actions should be considered
 
-This is the minimum contract that later operator surfaces can build on.
+## Generation commands
+
+Local source usage:
+
+```bash
+go run ./cmd/trust-lab report round --round-id <round-id>
+go run ./cmd/trust-lab report dry-run --last 24h
+go run ./cmd/trust-lab report management --last 168h
+```
+
+Docker usage:
+
+```bash
+docker compose --env-file .env -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.override.yml exec trust-lab \
+  clawbot-trust-lab report round --round-id <round-id>
+
+docker compose --env-file .env -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.override.yml exec trust-lab \
+  clawbot-trust-lab report dry-run --last 24h
+
+docker compose --env-file .env -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.override.yml exec trust-lab \
+  clawbot-trust-lab report management --last 168h
+```
+
+Explicit window usage:
+
+```bash
+go run ./cmd/trust-lab report dry-run \
+  --from 2026-03-25T00:00:00Z \
+  --to 2026-03-26T00:00:00Z
+
+go run ./cmd/trust-lab report management \
+  --from 2026-03-19T00:00:00Z \
+  --to 2026-03-26T00:00:00Z
+```
+
+## Data sources
+
+The reporting subsystem reuses existing benchmark state:
+
+- benchmark rounds
+- round summary
+- promotions
+- recommendations
+- detection delta
+- production-bridge fields
+- Tier usage markers and scenario feature catalog
+
+It does not maintain a second source of truth for benchmark outcomes.
+
+## Current Version 1 limits
+
+Version 1 reporting is intentionally practical.
+
+It does not claim:
+
+- a full BI or analytics warehouse
+- chart-heavy dashboards
+- a persisted service incident timeline
+- a generic replay-promotion API beyond the current Trust Lab workflow
+
+The reports are grounded in the actual persisted round data that Version 1 already owns.

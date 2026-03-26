@@ -1,45 +1,58 @@
-Phase 9 validation runner
+Version 1 validation runner
 
-Files:
-- phase9_validation_report.py
-- phase9_validation-report.md / .html (generated when run)
+File:
+- version1_validation_report.py
 
 What it does:
-- runs backend static checks
-- runs web checks (lint/test/build/e2e) if web/ exists
-- checks docs for Phase 9 API/persistence coverage
-- checks report artifact directories for expected files
-- calls live API endpoints for scenarios, rounds, promotions, recommendations, trends, and scheduler status
+- validates repo docs and release-surface files
+- optionally runs backend and web quality checks
+- checks repo-native Docker Compose state for the Version 1 core stack
+- calls live trust-lab APIs for health, rounds, promotions, recommendations, trends, and scheduler status
 - optionally triggers a fresh benchmark round
-- writes both Markdown and HTML reports
+- writes both Markdown and HTML validation reports
+
+Current Docker defaults:
+- core compose: `deploy/compose/docker-compose.yml`
+- local override: `deploy/compose/docker-compose.override.yml`
+- env file: `.env`
 
 Example usage:
-1) From the clawbot-trust-lab repo root, with services already running:
 
-   python3 /mnt/data/phase9_validation_report.py \
-     --repo-root . \
-     --api-base http://127.0.0.1:8090 \
-     --output-dir ./phase9-validation-output
+1. Validate the running core Docker stack:
 
-2) To also trigger a fresh benchmark round during validation:
+   python3 ./scripts/version1_validation_report.py \
+     --deployment-mode docker \
+     --compose-file deploy/compose/docker-compose.yml \
+     --compose-override-file deploy/compose/docker-compose.override.yml \
+     --compose-env-file .env \
+     --output-dir ./version1-validation-output
 
-   python3 /mnt/data/phase9_validation_report.py \
-     --repo-root . \
-     --api-base http://127.0.0.1:8090 \
+2. Also trigger a fresh benchmark round:
+
+   python3 ./scripts/version1_validation_report.py \
+     --deployment-mode docker \
+     --compose-file deploy/compose/docker-compose.yml \
+     --compose-override-file deploy/compose/docker-compose.override.yml \
+     --compose-env-file .env \
      --run-round \
-     --output-dir ./phase9-validation-output
+     --output-dir ./version1-validation-output
 
-3) To skip slower sections:
+3. Keep it smoke-oriented:
 
-   python3 /mnt/data/phase9_validation_report.py \
-     --repo-root . \
+   python3 ./scripts/version1_validation_report.py \
+     --deployment-mode docker \
+     --compose-file deploy/compose/docker-compose.yml \
+     --compose-override-file deploy/compose/docker-compose.override.yml \
+     --compose-env-file .env \
+     --skip-backend \
      --skip-web \
-     --output-dir ./phase9-validation-output
+     --run-round \
+     --output-dir ./version1-validation-output
 
 Outputs:
-- phase9-validation-output/phase9-validation-report.md
-- phase9-validation-output/phase9-validation-report.html
+- version1-validation-output/version1-validation-report.md
+- version1-validation-output/version1-validation-report.html
 
 Exit code:
-- 0 if all checks passed
-- 1 if any checks failed
+- `0` if all checks passed
+- `1` if any checks failed

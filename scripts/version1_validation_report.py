@@ -34,6 +34,17 @@ def now_iso() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def compose_args(args: argparse.Namespace) -> list[str]:
+    files = [args.compose_file, args.compose_override_file]
+    if args.include_optional_stack:
+        files.append(args.compose_optional_file)
+
+    out = ["docker", "compose", "--env-file", args.compose_env_file]
+    for item in files:
+        out.extend(["-f", item])
+    return out
+
+
 def run_cmd(name: str, cmd: list[str], cwd: Path, timeout: int = 900, env: dict[str, str] | None = None) -> CheckResult:
     try:
         proc = subprocess.run(
@@ -480,8 +491,11 @@ def main() -> int:
     ap.add_argument("--api-base", default="http://127.0.0.1:8090", help="Base URL for trust-lab API")
     ap.add_argument("--ui-base", default="http://127.0.0.1:8091", help="Base URL for the optional operator UI")
     ap.add_argument("--deployment-mode", choices=["local", "docker"], default="local", help="Validate a local source run or the Docker-based Version 1 stack")
-    ap.add_argument("--compose-file", default="docker-compose.v1.yml", help="Compose file used for Version 1 Docker deployment checks")
-    ap.add_argument("--compose-env-file", default="docker-compose.v1.env", help="Compose env file used for Version 1 Docker deployment checks")
+    ap.add_argument("--compose-file", default="deploy/compose/docker-compose.yml", help="Core Compose file used for Version 1 Docker deployment checks")
+    ap.add_argument("--compose-override-file", default="deploy/compose/docker-compose.override.yml", help="Local override Compose file used for Version 1 Docker deployment checks")
+    ap.add_argument("--compose-optional-file", default="deploy/compose/docker-compose.optional.yml", help="Optional-services Compose file used only when the optional stack is enabled")
+    ap.add_argument("--include-optional-stack", action="store_true", help="Include the optional Compose overlay during Docker deployment checks")
+    ap.add_argument("--compose-env-file", default=".env", help="Compose env file used for Version 1 Docker deployment checks")
     ap.add_argument("--skip-compose-checks", action="store_true", help="Skip docker compose checks even when deployment mode is docker")
     ap.add_argument("--skip-backend", action="store_true")
     ap.add_argument("--skip-web", action="store_true")
@@ -500,11 +514,11 @@ def main() -> int:
     results.append(file_exists("README exists", repo_root / "README.md"))
     results.append(file_exists("api.md exists", repo_root / "docs" / "api.md"))
     results.append(file_exists("Version 1 deployment guide exists", repo_root / "docs" / "deploying-clawbot-trust-lab-v1.md"))
-    results.append(file_exists("scenario catalog exists", repo_root / "docs" / "phase-9-scenario-catalog.md"))
+    results.append(file_exists("scenario catalog exists", repo_root / "docs" / "version1-scenario-catalog.md"))
     results.append(text_contains(
         "README presents Version 1 and planned Version 2 clearly",
         repo_root / "README.md",
-        ["Version 1", "Docker", "phase9_validation_report.py", "Planned Version 2"],
+        ["Version 1", "Docker", "version1_validation_report.py", "Planned Version 2"],
     ))
     results.append(text_contains(
         "api.md includes Recommendation / Trend / Scheduler schemas",
@@ -513,21 +527,15 @@ def main() -> int:
     ))
     if args.deployment_mode == "docker":
         results.append(file_exists("Version 1 compose file exists", repo_root / args.compose_file))
+        results.append(file_exists("Version 1 compose override file exists", repo_root / args.compose_override_file))
         results.append(file_exists("Version 1 compose env file exists", repo_root / args.compose_env_file))
+        results.append(file_exists("Version 1 optional compose file exists", repo_root / args.compose_optional_file))
         results.append(file_exists("trust-lab Dockerfile exists", repo_root / "deploy" / "docker" / "clawbot-trust-lab.Dockerfile"))
         results.append(file_exists("operator UI Dockerfile exists", repo_root / "deploy" / "docker" / "operator-ui" / "Dockerfile"))
 
     if args.deployment_mode == "docker" and not args.skip_compose_checks:
         compose_env = os.environ.copy()
-        compose_cmd = [
-            "docker",
-            "compose",
-            "--env-file",
-            args.compose_env_file,
-            "-f",
-            args.compose_file,
-            "ps",
-        ]
+        compose_cmd = compose_args(args) + ["ps"]
         results.append(run_cmd_text("docker compose ps", compose_cmd, repo_root, timeout=120, env=compose_env))
 
     if not args.skip_backend:

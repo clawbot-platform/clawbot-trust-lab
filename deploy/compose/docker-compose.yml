@@ -1,0 +1,142 @@
+name: ${COMPOSE_PROJECT_NAME:-clawbot-trust-lab-v1}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_HOST}:${POSTGRES_PORT}:5432"
+    volumes:
+      - trust_lab_postgres:/var/lib/postgresql/data
+      - ../../../clawbot-server/deploy/docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - trust_lab
+
+  control-plane:
+    build:
+      context: ../../..
+      dockerfile: clawbot-trust-lab/deploy/docker/clawbot-server.Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      SERVER_ADDRESS: 0.0.0.0:8080
+      LOG_LEVEL: ${LOG_LEVEL}
+      AUTO_MIGRATE: "true"
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    ports:
+      - "${CONTROL_PLANE_HOST}:${CONTROL_PLANE_PORT}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8080/healthz; else curl -fsS http://127.0.0.1:8080/healthz >/dev/null; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - trust_lab
+
+  clawmem:
+    build:
+      context: ../../..
+      dockerfile: clawbot-trust-lab/deploy/docker/clawmem.Dockerfile
+    restart: unless-stopped
+    environment:
+      CLAWMEM_ENV: ${APP_ENV}
+      CLAWMEM_LOG_LEVEL: ${LOG_LEVEL}
+      CLAWMEM_ADDR: 0.0.0.0:8088
+      CLAWMEM_STORAGE_PATH: /data/clawmem
+      CLAWMEM_SEED_PATH: /app/configs/memory/seed-memory.json
+      CLAWMEM_SEED_ON_STARTUP: "true"
+    ports:
+      - "${CLAWMEM_HOST}:${CLAWMEM_PORT}:8088"
+    volumes:
+      - ../../var/docker/clawmem:/data/clawmem
+    healthcheck:
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8088/healthz; else curl -fsS http://127.0.0.1:8088/healthz >/dev/null; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - trust_lab
+
+  trust-lab:
+    build:
+      context: ../../..
+      dockerfile: clawbot-trust-lab/deploy/docker/clawbot-trust-lab.Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      SERVICE_ADDRESS: 0.0.0.0:8090
+      LOG_LEVEL: ${LOG_LEVEL}
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT}
+      CONTROL_PLANE_BASE_URL: http://control-plane:8080
+      CONTROL_PLANE_TIMEOUT: ${CONTROL_PLANE_TIMEOUT}
+      CLAWMEM_BASE_URL: http://clawmem:8088
+      CLAWMEM_TIMEOUT: ${CLAWMEM_TIMEOUT}
+      SCENARIO_PACKS_DIR: /app/configs/scenario-packs
+      REPLAY_ARCHIVE_DIR: /app/var/replay-archive
+      REPORTS_DIR: /app/reports
+      BENCHMARK_SCHEDULER_ENABLED: ${BENCHMARK_SCHEDULER_ENABLED}
+      BENCHMARK_SCHEDULER_SCENARIO_FAMILY: ${BENCHMARK_SCHEDULER_SCENARIO_FAMILY}
+      BENCHMARK_SCHEDULER_INTERVAL: ${BENCHMARK_SCHEDULER_INTERVAL}
+      BENCHMARK_SCHEDULER_MAX_RUNS: ${BENCHMARK_SCHEDULER_MAX_RUNS}
+      BENCHMARK_SCHEDULER_DRY_RUN: ${BENCHMARK_SCHEDULER_DRY_RUN}
+    ports:
+      - "${TRUST_LAB_HOST}:${TRUST_LAB_PORT}:8090"
+    depends_on:
+      control-plane:
+        condition: service_healthy
+      clawmem:
+        condition: service_healthy
+    volumes:
+      - ../../reports:/app/reports
+      - ../../var/replay-archive:/app/var/replay-archive
+    healthcheck:
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8090/readyz; else curl -fsS http://127.0.0.1:8090/readyz >/dev/null; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - trust_lab
+
+  trust-lab-ui:
+    build:
+      context: ../../..
+      dockerfile: clawbot-trust-lab/deploy/docker/operator-ui/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${TRUST_LAB_UI_HOST}:${TRUST_LAB_UI_PORT}:8080"
+    depends_on:
+      trust-lab:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8080/; else curl -fsS http://127.0.0.1:8080/ >/dev/null; fi"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - trust_lab
+
+networks:
+  trust_lab:
+    driver: bridge
+
+volumes:
+  trust_lab_postgres:

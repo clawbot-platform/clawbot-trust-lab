@@ -1,7 +1,7 @@
 # Clawbot Trust Lab Version 1
 ## Product Brief
 
-For the actual Docker install and validation walkthrough, use [`deploying-clawbot-trust-lab-v1.md`](./deploying-clawbot-trust-lab-v1.md).
+For the actual install and validation walkthrough, use [`deploying-clawbot-trust-lab-v1.md`](./deploying-clawbot-trust-lab-v1.md).
 
 ## Purpose
 
@@ -16,6 +16,7 @@ This version is intended to prove:
 - fraud-control regressions can be surfaced through round reports, promotions, trends, and recommendations
 
 Version 1 is the current release mode of the repo.
+The current supported deployment path is the repo-native Docker Compose stack under `deploy/compose/`.
 
 It is not dependent on an incumbent enterprise data feed.
 It operates using its own built-in scenario catalog, challenger variants, replay loop, and operator workflows.
@@ -151,13 +152,26 @@ Version 1 produces:
 - promotions
 - replay regressions
 - round summaries
+- round reports
+- 24-hour dry-run reports
+- 1-week management reports
 - executive summaries
 - detection deltas
 - recommendation reports
 - trend summaries
 - operator-facing recommendations
 
-These outputs are available through APIs, reports, and the operator UI.
+These outputs are available through APIs, report artifacts, the operator UI, and the `trust-lab report ...` command surface.
+
+## Current deployment posture
+
+Version 1 is currently documented and supported as:
+
+- a repo-native Docker Compose deployment
+- a lean core stack by default
+- an adjacent-checkout local-build workflow for `clawbot-server`, `clawmem`, and `clawbot-trust-lab`
+
+Optional services are intentionally separated from the default path.
 
 ---
 

@@ -1,19 +1,64 @@
 SHELL := /bin/sh
 
+COMPOSE_FILE := deploy/compose/docker-compose.yml
+COMPOSE_OVERRIDE := deploy/compose/docker-compose.override.yml
+COMPOSE_OPTIONAL := deploy/compose/docker-compose.optional.yml
 ENV_FILE := .env
+COMPOSE := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE)
+COMPOSE_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f $(COMPOSE_OPTIONAL)
 GO_ENV := GOCACHE=$(CURDIR)/.cache/go-build GOMODCACHE=$(CURDIR)/.cache/go-mod
 COVERAGE_FILE := coverage.out
 
-.PHONY: help check-env check-v1-docker-env run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1 validate-v1
+.PHONY: help check-env check-env-optional up up-optional down down-optional restart ps ps-optional logs logs-optional smoke smoke-optional clean compose-validate run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e validate-v1 report-round report-dry-run report-management docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1
 
 help: ## Show available targets.
-	@awk 'BEGIN {FS = ": ## "}; /^[a-zA-Z0-9_.-]+: ## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | awk -F '\t' '{printf "  %-18s %s\n", $$1, $$2}'
 
-check-env:
-	@test -f $(ENV_FILE) || { echo "Missing $(ENV_FILE). Copy .env.example to $(ENV_FILE) first."; exit 1; }
+check-env: ## Validate core env values for the repo-native Version 1 stack.
+	@sh ./scripts/check-env.sh $(ENV_FILE)
 
-check-v1-docker-env:
-	@test -f docker-compose.v1.env || { echo "Missing docker-compose.v1.env. Copy docker-compose.v1.env.example to docker-compose.v1.env first."; exit 1; }
+check-env-optional: ## Validate core + optional env values when optional services are enabled.
+	@VALIDATE_OPTIONAL_STACK=1 sh ./scripts/check-env.sh $(ENV_FILE)
+
+up: check-env ## Build and start the core Version 1 stack.
+	@mkdir -p reports var/replay-archive var/docker/clawmem
+	$(COMPOSE) up -d --build
+
+up-optional: check-env-optional ## Start the core stack plus optional overlays.
+	@mkdir -p reports var/replay-archive var/docker/clawmem
+	$(COMPOSE_WITH_OPTIONAL) up -d --build
+
+down: check-env ## Stop the core Version 1 stack.
+	$(COMPOSE) down --remove-orphans
+
+down-optional: check-env-optional ## Stop the core + optional Version 1 stack.
+	$(COMPOSE_WITH_OPTIONAL) down --remove-orphans
+
+restart: down up ## Restart the core Version 1 stack.
+
+ps: check-env ## Show the core Version 1 stack state.
+	$(COMPOSE) ps
+
+ps-optional: check-env-optional ## Show the core + optional stack state.
+	$(COMPOSE_WITH_OPTIONAL) ps
+
+logs: check-env ## Tail logs for the core Version 1 stack.
+	$(COMPOSE) logs -f --tail=100
+
+logs-optional: check-env-optional ## Tail logs for the core + optional Version 1 stack.
+	$(COMPOSE_WITH_OPTIONAL) logs -f --tail=100
+
+smoke: check-env ## Run the core stack smoke validation.
+	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --skip-backend --skip-web --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
+
+smoke-optional: check-env-optional ## Run smoke validation with optional overlays enabled.
+	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-optional-file $(COMPOSE_OPTIONAL) --include-optional-stack --compose-env-file $(ENV_FILE) --skip-backend --skip-web --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
+
+clean: check-env ## Remove the core stack and named volumes.
+	$(COMPOSE) down -v --remove-orphans
+
+compose-validate: check-env ## Validate the rendered core Compose configuration.
+	$(COMPOSE) config >/dev/null
 
 run: check-env ## Run the trust-lab service locally.
 	@mkdir -p .cache/go-build .cache/go-mod
@@ -63,18 +108,35 @@ ui-coverage: ## Run operator UI tests with LCOV coverage output.
 ui-e2e: ## Run the operator UI Playwright smoke tests.
 	cd web && npm run test:e2e
 
-docker-build-v1: check-v1-docker-env ## Build the Version 1 Docker images.
-	docker compose --env-file docker-compose.v1.env -f docker-compose.v1.yml build
+validate-v1: check-env ## Run the full Version 1 validation report against the core stack.
+	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
 
-docker-up-v1: check-v1-docker-env ## Start the Version 1 Docker stack.
-	@mkdir -p reports var/replay-archive var/docker/clawmem
-	docker compose --env-file docker-compose.v1.env -f docker-compose.v1.yml up -d --build
+docker-build-v1: check-env ## Backward-compatible alias for building the core Version 1 stack images.
+	$(COMPOSE) build
 
-docker-down-v1: check-v1-docker-env ## Stop the Version 1 Docker stack.
-	docker compose --env-file docker-compose.v1.env -f docker-compose.v1.yml down
+docker-up-v1: up ## Backward-compatible alias for make up.
 
-docker-ps-v1: check-v1-docker-env ## Show the Version 1 Docker stack state.
-	docker compose --env-file docker-compose.v1.env -f docker-compose.v1.yml ps
+docker-down-v1: down ## Backward-compatible alias for make down.
 
-validate-v1: check-v1-docker-env ## Run the Version 1 validation report against the Docker stack.
-	python3 ./scripts/phase9_validation_report.py --deployment-mode docker --compose-file docker-compose.v1.yml --compose-env-file docker-compose.v1.env --run-round --output-dir ./version1-validation-output
+docker-ps-v1: ps ## Backward-compatible alias for make ps.
+
+report-round: check-env ## Generate a round report. Set ROUND_ID=<id>.
+	@test -n "$(ROUND_ID)" || { echo "Missing ROUND_ID"; exit 1; }
+	@mkdir -p .cache/go-build .cache/go-mod
+	@set -a; . ./.env; set +a; $(GO_ENV) go run ./cmd/trust-lab report round --round-id $(ROUND_ID)
+
+report-dry-run: check-env ## Generate a dry-run report. Set WINDOW_LAST=24h or use WINDOW_FROM/WINDOW_TO.
+	@mkdir -p .cache/go-build .cache/go-mod
+	@set -a; . ./.env; set +a; if [ -n "$(WINDOW_FROM)" ] || [ -n "$(WINDOW_TO)" ]; then \
+		$(GO_ENV) go run ./cmd/trust-lab report dry-run --from $(WINDOW_FROM) --to $(WINDOW_TO); \
+	else \
+		$(GO_ENV) go run ./cmd/trust-lab report dry-run --last $${WINDOW_LAST:-24h}; \
+	fi
+
+report-management: check-env ## Generate a management report. Set WINDOW_LAST=168h or use WINDOW_FROM/WINDOW_TO.
+	@mkdir -p .cache/go-build .cache/go-mod
+	@set -a; . ./.env; set +a; if [ -n "$(WINDOW_FROM)" ] || [ -n "$(WINDOW_TO)" ]; then \
+		$(GO_ENV) go run ./cmd/trust-lab report management --from $(WINDOW_FROM) --to $(WINDOW_TO); \
+	else \
+		$(GO_ENV) go run ./cmd/trust-lab report management --last $${WINDOW_LAST:-168h}; \
+	fi

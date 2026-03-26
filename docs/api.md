@@ -492,10 +492,28 @@ Phase 8.1 bootstrap note:
 The report API exposes the generated artifacts under `reports/<round-id>/`, including:
 - `round-summary.json`
 - `round-summary.md`
+- `round-report.json`
+- `round-report.md`
 - `detection-delta.json`
 - `promotion-report.json`
 - `recommendation-report.json`
 - `executive-summary.md`
+
+Version 1 also supports two larger DRQ report types generated from the trust-lab CLI instead of a dedicated HTTP API:
+
+- `reports/daily/<window>/dry-run-report.json`
+- `reports/daily/<window>/dry-run-report.md`
+- `reports/management/<window>/management-report.json`
+- `reports/management/<window>/management-report.md`
+
+Generate them with:
+
+```bash
+go run ./cmd/trust-lab report dry-run --last 24h
+go run ./cmd/trust-lab report management --last 168h
+```
+
+These DRQ report commands are separate from `scripts/version1_validation_report.py`, which remains the readiness and validation tool.
 
 `recommendation-report.json` is a structured round artifact containing:
 

@@ -32,6 +32,14 @@ func (scenarioServiceStub) GetPack(string) (scenario.ScenarioPack, error) {
 	return scenario.ScenarioPack{ID: "starter-pack", Name: "Starter Pack"}, nil
 }
 
+type scenarioServiceErrorStub struct {
+	scenarioServiceStub
+}
+
+func (scenarioServiceErrorStub) GetPack(string) (scenario.ScenarioPack, error) {
+	return scenario.ScenarioPack{}, errors.New("scenario pack not found")
+}
+
 type executionServiceStub struct {
 	result executionsvc.ExecutionResult
 	err    error
@@ -436,6 +444,30 @@ func TestSystemHandlerHealth(t *testing.T) {
 	}
 }
 
+func TestSystemHandlerReadyAndVersion(t *testing.T) {
+	ready := NewSystemHandler(func(context.Context) error { return nil }, version.Current())
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	recorder := httptest.NewRecorder()
+	ready.Ready(recorder, req)
+	if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"status":"ready"`)) {
+		t.Fatalf("expected ready response, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	notReady := NewSystemHandler(func(context.Context) error { return errors.New("dependency down") }, version.Current())
+	recorder = httptest.NewRecorder()
+	notReady.Ready(recorder, req)
+	if recorder.Code != http.StatusServiceUnavailable || !bytes.Contains(recorder.Body.Bytes(), []byte(`"status":"not_ready"`)) {
+		t.Fatalf("expected not ready response, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	versionReq := httptest.NewRequest(http.MethodGet, "/version", nil)
+	versionRecorder := httptest.NewRecorder()
+	ready.Version(versionRecorder, versionReq)
+	if versionRecorder.Code != http.StatusOK || !bytes.Contains(versionRecorder.Body.Bytes(), []byte(`"version"`)) {
+		t.Fatalf("expected version payload, got %d body=%s", versionRecorder.Code, versionRecorder.Body.String())
+	}
+}
+
 func TestTrustLabHandlerListScenarios(t *testing.T) {
 	handler := newHandler()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/scenarios", nil)
@@ -610,6 +642,135 @@ func TestTrustLabHandlerGetBenchmarkTrendSummary(t *testing.T) {
 	}
 }
 
+func TestTrustLabHandlerReadEndpoints(t *testing.T) {
+	handler := newHandler()
+	tests := []struct {
+		name       string
+		target     func(http.ResponseWriter, *http.Request)
+		path       string
+		pathValues map[string]string
+		wantCode   int
+		wantBody   string
+	}{
+		{name: "scenario types", target: handler.ScenarioTypes, path: "/api/v1/scenarios/types", wantCode: http.StatusOK, wantBody: `"types"`},
+		{name: "list packs", target: handler.ListPacks, path: "/api/v1/scenarios/packs", wantCode: http.StatusOK, wantBody: `"starter-pack"`},
+		{name: "get pack", target: handler.GetPack, path: "/api/v1/scenarios/packs/starter-pack", pathValues: map[string]string{"id": "starter-pack"}, wantCode: http.StatusOK, wantBody: `"Starter Pack"`},
+		{name: "benchmark status", target: handler.BenchmarkStatus, path: "/api/v1/benchmark/status", wantCode: http.StatusOK, wantBody: `"registrations"`},
+		{name: "list rounds", target: handler.ListBenchmarkRounds, path: "/api/v1/benchmark/rounds", wantCode: http.StatusOK, wantBody: `"round-20260325120000"`},
+		{name: "get round", target: handler.GetBenchmarkRound, path: "/api/v1/benchmark/rounds/round-20260325120000", pathValues: map[string]string{"id": "round-20260325120000"}, wantCode: http.StatusOK, wantBody: `"round_status":"completed"`},
+		{name: "get round summary", target: handler.GetBenchmarkRoundSummary, path: "/api/v1/benchmark/rounds/round-20260325120000/summary", pathValues: map[string]string{"id": "round-20260325120000"}, wantCode: http.StatusOK, wantBody: `"robustness_outcome"`},
+		{name: "get round promotions", target: handler.GetBenchmarkRoundPromotions, path: "/api/v1/benchmark/rounds/round-20260325120000/promotions", pathValues: map[string]string{"id": "round-20260325120000"}, wantCode: http.StatusOK, wantBody: `"promo-1"`},
+		{name: "get recommendation", target: handler.GetBenchmarkRecommendation, path: "/api/v1/benchmark/recommendations/rec-round-20260325120000-replay", pathValues: map[string]string{"id": "rec-round-20260325120000-replay"}, wantCode: http.StatusOK, wantBody: `"add_to_replay_stable_set"`},
+		{name: "get scheduler status", target: handler.GetBenchmarkSchedulerStatus, path: "/api/v1/benchmark/scheduler/status", wantCode: http.StatusOK, wantBody: `"enabled":true`},
+		{name: "list artifacts", target: handler.ListArtifacts, path: "/api/v1/trust/artifacts", wantCode: http.StatusOK, wantBody: `"data"`},
+		{name: "list replay cases", target: handler.ListReplayCases, path: "/api/v1/replay/cases", wantCode: http.StatusOK, wantBody: `"data"`},
+		{name: "list orders", target: handler.ListOrders, path: "/api/v1/orders", wantCode: http.StatusOK, wantBody: `"order-1"`},
+		{name: "list events", target: handler.ListEvents, path: "/api/v1/events", wantCode: http.StatusOK, wantBody: `"evt-1"`},
+		{name: "get trust decision", target: handler.GetTrustDecision, path: "/api/v1/trust/decisions/decision-1", pathValues: map[string]string{"id": "decision-1"}, wantCode: http.StatusOK, wantBody: `"accepted"`},
+		{name: "benchmark round status", target: handler.BenchmarkRoundStatus, path: "/api/v1/benchmark/rounds/status", wantCode: http.StatusOK, wantBody: `"scheduler"`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			for key, value := range tc.pathValues {
+				req.SetPathValue(key, value)
+			}
+			recorder := httptest.NewRecorder()
+			tc.target(recorder, req)
+			if recorder.Code != tc.wantCode || !bytes.Contains(recorder.Body.Bytes(), []byte(tc.wantBody)) {
+				t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
+func TestTrustLabHandlerAdditionalReadAndSchedulerEndpoints(t *testing.T) {
+	handler := newHandler()
+
+	t.Run("detection rules", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/detection/rules", nil)
+		recorder := httptest.NewRecorder()
+		handler.ListDetectionRules(recorder, req)
+		if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"refund_weak_authorization"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	t.Run("get detection result", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/detection/results/det-order-suspicious-refund-attempt", nil)
+		req.SetPathValue("id", "det-order-suspicious-refund-attempt")
+		recorder := httptest.NewRecorder()
+		handler.GetDetectionResult(recorder, req)
+		if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"det-order-suspicious-refund-attempt"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	t.Run("replay status with memory context", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/replay/status?scenario_id=starter-mandate-review", nil)
+		recorder := httptest.NewRecorder()
+		handler.ReplayStatus(recorder, req)
+		if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"memory_status":"ok"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	t.Run("round delta", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/benchmark/rounds/round-20260325120000/delta", nil)
+		req.SetPathValue("id", "round-20260325120000")
+		recorder := httptest.NewRecorder()
+		handler.GetBenchmarkRoundDelta(recorder, req)
+		if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"commerce-challenger-weakened-provenance-purchase"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	t.Run("run scheduler", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/benchmark/scheduler/run", bytes.NewBufferString(`{"scenario_family":"commerce","interval":"24h","max_runs":1}`))
+		recorder := httptest.NewRecorder()
+		handler.RunBenchmarkScheduler(recorder, req)
+		if recorder.Code != http.StatusCreated || !bytes.Contains(recorder.Body.Bytes(), []byte(`"summary"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+}
+
+func TestTrustLabHandlerNotFoundAndBadInputPaths(t *testing.T) {
+	handler := newHandler()
+	missingPackHandler := newHandler()
+	missingPackHandler.scenarios = scenarioServiceErrorStub{}
+	tests := []struct {
+		name       string
+		target     func(http.ResponseWriter, *http.Request)
+		method     string
+		path       string
+		body       string
+		pathValues map[string]string
+		wantCode   int
+	}{
+		{name: "get detection result missing", target: handler.GetDetectionResult, method: http.MethodGet, path: "/api/v1/detection/results/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "get pack missing", target: missingPackHandler.GetPack, method: http.MethodGet, path: "/api/v1/scenarios/packs/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "round delta missing", target: handler.GetBenchmarkRoundDelta, method: http.MethodGet, path: "/api/v1/benchmark/rounds/missing/delta", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "get benchmark recommendation missing", target: handler.GetBenchmarkRecommendation, method: http.MethodGet, path: "/api/v1/benchmark/recommendations/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "run scheduler bad json", target: handler.RunBenchmarkScheduler, method: http.MethodPost, path: "/api/v1/benchmark/scheduler/run", body: "{", wantCode: http.StatusBadRequest},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, bytes.NewBufferString(tc.body))
+			for key, value := range tc.pathValues {
+				req.SetPathValue(key, value)
+			}
+			recorder := httptest.NewRecorder()
+			tc.target(recorder, req)
+			if recorder.Code != tc.wantCode {
+				t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func TestTrustLabHandlerEvaluateDetection(t *testing.T) {
 	handler := newHandler()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/detection/evaluate", bytes.NewBufferString(`{"scenario_id":"commerce-suspicious-refund-attempt"}`))
@@ -661,6 +822,148 @@ func TestOperatorHandlerListRounds(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestOperatorHandlerReadEndpoints(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+
+	tests := []struct {
+		name       string
+		target     func(http.ResponseWriter, *http.Request)
+		path       string
+		pathValues map[string]string
+		wantCode   int
+		wantBody   string
+	}{
+		{
+			name:   "get round",
+			target: handler.GetRound,
+			path:   "/api/v1/operator/rounds/round-20260325120000",
+			pathValues: map[string]string{
+				"id": "round-20260325120000",
+			},
+			wantCode: http.StatusOK,
+			wantBody: `"id":"round-20260325120000"`,
+		},
+		{
+			name:     "list promotions",
+			target:   handler.ListPromotions,
+			path:     "/api/v1/operator/promotions",
+			wantCode: http.StatusOK,
+			wantBody: `"promo-1"`,
+		},
+		{
+			name:   "get promotion",
+			target: handler.GetPromotion,
+			path:   "/api/v1/operator/promotions/promo-1",
+			pathValues: map[string]string{
+				"id": "promo-1",
+			},
+			wantCode: http.StatusOK,
+			wantBody: `"promotion_reason":"detector_miss"`,
+		},
+		{
+			name:   "get recommendation",
+			target: handler.GetRecommendation,
+			path:   "/api/v1/operator/recommendations/rec-round-20260325120000-replay",
+			pathValues: map[string]string{
+				"id": "rec-round-20260325120000-replay",
+			},
+			wantCode: http.StatusOK,
+			wantBody: `"add_to_replay_stable_set"`,
+		},
+		{
+			name:   "get reports",
+			target: handler.GetReports,
+			path:   "/api/v1/operator/reports/round-20260325120000",
+			pathValues: map[string]string{
+				"round_id": "round-20260325120000",
+			},
+			wantCode: http.StatusOK,
+			wantBody: `"executive-summary.md"`,
+		},
+		{
+			name:   "get detection result",
+			target: handler.GetDetectionResult,
+			path:   "/api/v1/operator/detection/results/det-order-suspicious-refund-attempt",
+			pathValues: map[string]string{
+				"id": "det-order-suspicious-refund-attempt",
+			},
+			wantCode: http.StatusOK,
+			wantBody: `"status":"clean"`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			for key, value := range tc.pathValues {
+				req.SetPathValue(key, value)
+			}
+			recorder := httptest.NewRecorder()
+			tc.target(recorder, req)
+			if recorder.Code != tc.wantCode || !bytes.Contains(recorder.Body.Bytes(), []byte(tc.wantBody)) {
+				t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
+func TestOperatorHandlerRecommendationsAndNotFoundPaths(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+
+	t.Run("list recommendations", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/operator/recommendations", nil)
+		recorder := httptest.NewRecorder()
+		handler.ListRecommendations(recorder, req)
+		if recorder.Code != http.StatusOK || !bytes.Contains(recorder.Body.Bytes(), []byte(`"add_to_replay_stable_set"`)) {
+			t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+	})
+
+	tests := []struct {
+		name       string
+		target     func(http.ResponseWriter, *http.Request)
+		path       string
+		pathValues map[string]string
+		query      string
+		wantCode   int
+	}{
+		{name: "round missing", target: handler.GetRound, path: "/api/v1/operator/rounds/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "compare rounds service error", target: handler.CompareRounds, path: "/api/v1/operator/rounds/compare?previous=round-1", wantCode: http.StatusBadRequest},
+		{name: "promotion missing", target: handler.GetPromotion, path: "/api/v1/operator/promotions/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "detection missing", target: handler.GetDetectionResult, path: "/api/v1/operator/detections/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "recommendation missing", target: handler.GetRecommendation, path: "/api/v1/operator/recommendations/missing", pathValues: map[string]string{"id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "reports missing", target: handler.GetReports, path: "/api/v1/operator/rounds/missing/reports", pathValues: map[string]string{"round_id": "missing"}, wantCode: http.StatusNotFound},
+		{name: "report artifact missing", target: handler.GetReportArtifact, path: "/api/v1/operator/rounds/round-20260325120000/reports/missing", pathValues: map[string]string{"round_id": "round-20260325120000", "artifact_name": "missing"}, wantCode: http.StatusNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			for key, value := range tc.pathValues {
+				req.SetPathValue(key, value)
+			}
+			recorder := httptest.NewRecorder()
+			tc.target(recorder, req)
+			if recorder.Code != tc.wantCode {
+				t.Fatalf("unexpected response code=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
+func TestOperatorHandlerCompareRoundsRequiresPrevious(t *testing.T) {
+	handler := NewOperatorHandler(operatorServiceStub{})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/operator/rounds/round-20260325120000/compare", nil)
+	req.SetPathValue("id", "round-20260325120000")
+	recorder := httptest.NewRecorder()
+
+	handler.CompareRounds(recorder, req)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 

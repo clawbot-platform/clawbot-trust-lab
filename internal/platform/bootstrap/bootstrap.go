@@ -28,6 +28,7 @@ type Dependencies struct {
 	ControlPlane controlplane.Client
 	Memory       memory.Client
 	Scenarios    *scenario.Service
+	Reporting    *servicereporting.Service
 	Trust        *trust.Service
 	Replay       *replay.Service
 	Benchmark    *servicebenchmark.Service
@@ -72,7 +73,7 @@ func Build(cfg config.Config, logger *slog.Logger) (Dependencies, error) {
 	replayService := replay.NewService(replayStore, memoryClient)
 	executionService := servicescenario.NewService(scenarioService, commerceService, eventService, trustFlowService, trustService, replayService)
 	detectionService := servicedetection.NewService(worldStore, executionService, replayService, memoryClient, detectionStore)
-	reportingService := servicereporting.NewService(cfg.ReportsDir)
+	reportingService := servicereporting.NewService(cfg.ReportsDir, scenarioService)
 	benchmarkRegistrationService := benchmark.NewService(controlPlaneClient)
 	benchmarkRoundService := servicebenchmark.NewService(benchmarkRegistrationService, executionService, detectionService, replayService, benchmarkStore, reportingService)
 	benchmarkRoundService.ConfigureScheduler(servicebenchmark.SchedulerConfig{
@@ -88,6 +89,7 @@ func Build(cfg config.Config, logger *slog.Logger) (Dependencies, error) {
 		ControlPlane: controlPlaneClient,
 		Memory:       memoryClient,
 		Scenarios:    scenarioService,
+		Reporting:    reportingService,
 		Trust:        trustService,
 		Replay:       replayService,
 		Benchmark:    benchmarkRoundService,
