@@ -1,21 +1,16 @@
 services:
-  # Local-development defaults for the core Version 1 stack.
   postgres:
     environment:
       TZ: UTC
 
   control-plane:
     environment:
-      TZ: UTC
+      LOG_LEVEL: ${LOG_LEVEL}
 
   clawmem:
     environment:
-      TZ: UTC
+      CLAWMEM_LOG_LEVEL: ${LOG_LEVEL}
 
   trust-lab:
     environment:
-      TZ: UTC
-
-  trust-lab-ui:
-    environment:
-      TZ: UTC
+      LOG_LEVEL: ${LOG_LEVEL}

@@ -3,6 +3,7 @@
 [![ci](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/ci.yml)
 [![quality](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/quality.yml/badge.svg)](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/quality.yml)
 [![security](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/security.yml/badge.svg)](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/security.yml)
+[![docker-compose-validate](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/docker-compose-validate.yml/badge.svg)](https://github.com/clawbot-platform/clawbot-trust-lab/actions/workflows/docker-compose-validate.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=clawbot-platform_clawbot-trust-lab&metric=alert_status&token=abb591daa9f6778dcdc919142fe123aa30947073)](https://sonarcloud.io/summary/new_code?id=clawbot-platform_clawbot-trust-lab)
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
@@ -76,6 +77,19 @@ The default Version 1 stack is intentionally lean:
 - `trust-lab-ui`
 
 Optional services are separated from the default path. Today, the optional overlay exists for future extensions, but Version 1 does not require any extra services beyond the core stack.
+
+### Local bind-mount mode
+
+For local development and dry-run review, you can enable host-visible outputs with:
+
+- `deploy/compose/docker-compose.local-bind.yml`
+
+This overlays bind mounts for:
+- `var/docker/clawmem`
+- `reports`
+- `var/replay-archive`
+
+CI and default Compose usage should continue using the named-volume core stack.
 
 ## Quick start with Docker
 

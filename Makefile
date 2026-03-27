@@ -143,3 +143,17 @@ report-management: check-env ## Generate a management report. Set WINDOW_LAST=16
 	else \
 		$(GO_ENV) go run ./cmd/trust-lab report management --last $${WINDOW_LAST:-168h}; \
 	fi
+COMPOSE_LOCAL_BIND := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f deploy/compose/docker-compose.local-bind.yml
+COMPOSE_LOCAL_BIND_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f deploy/compose/docker-compose.local-bind.yml -f $(COMPOSE_OPTIONAL)
+
+up-local: check-env
+	$(COMPOSE_LOCAL_BIND) up -d
+
+up-local-optional: check-env-optional
+	$(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) up -d
+
+down-local: check-env
+	$(COMPOSE_LOCAL_BIND) down --remove-orphans
+
+down-local-optional: check-env-optional
+	$(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) down --remove-orphans

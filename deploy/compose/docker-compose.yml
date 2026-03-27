@@ -64,13 +64,13 @@ services:
     ports:
       - "${CLAWMEM_HOST}:${CLAWMEM_PORT}:8088"
     volumes:
-      - ../../var/docker/clawmem:/data/clawmem
+      - trust_lab_clawmem_data:/data/clawmem
     healthcheck:
       test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8088/healthz; else curl -fsS http://127.0.0.1:8088/healthz >/dev/null; fi"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 30s
     networks:
       - trust_lab
 
@@ -104,8 +104,8 @@ services:
       clawmem:
         condition: service_healthy
     volumes:
-      - ../../reports:/app/reports
-      - ../../var/replay-archive:/app/var/replay-archive
+      - trust_lab_reports:/app/reports
+      - trust_lab_replay_archive:/app/var/replay-archive
     healthcheck:
       test: ["CMD-SHELL", "if command -v wget >/dev/null 2>&1; then wget -q -O /dev/null http://127.0.0.1:8090/readyz; else curl -fsS http://127.0.0.1:8090/readyz >/dev/null; fi"]
       interval: 10s
@@ -140,3 +140,6 @@ networks:
 
 volumes:
   trust_lab_postgres:
+  trust_lab_clawmem_data:
+  trust_lab_reports:
+  trust_lab_replay_archive:

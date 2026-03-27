@@ -90,10 +90,14 @@ jobs:
             -f deploy/compose/docker-compose.yml \
             -f deploy/compose/docker-compose.override.yml \
             ps
+
+      - name: Show focused service logs on failure
+        if: failure()
+        run: |
           docker compose --env-file .env \
             -f deploy/compose/docker-compose.yml \
             -f deploy/compose/docker-compose.override.yml \
-            logs --tail=200
+            logs --tail=200 postgres control-plane clawmem trust-lab trust-lab-ui
 
       - name: Tear down stack
         if: always()

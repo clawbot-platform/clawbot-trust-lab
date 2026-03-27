@@ -1,0 +1,10 @@
+services:
+    clawmem:
+      volumes:
+        - ../../var/docker/clawmem:/data/clawmem
+
+    trust-lab:
+      volumes:
+        - ../../reports:/app/reports
+        - ../../var/replay-archive:/app/var/replay-archive
+    
