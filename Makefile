@@ -9,16 +9,16 @@ COMPOSE_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE
 GO_ENV := GOCACHE=$(CURDIR)/.cache/go-build GOMODCACHE=$(CURDIR)/.cache/go-mod
 COVERAGE_FILE := coverage.out
 
-.PHONY: help check-env check-env-optional up up-optional down down-optional restart ps ps-optional logs logs-optional smoke smoke-optional clean compose-validate run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e validate-v1 report-round report-dry-run report-management docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1
+.PHONY: help check-env check-env-optional up up-optional down down-optional restart ps ps-optional logs logs-optional clean compose-validate compose-validate-optional smoke smoke-optional run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e validate-v1 report-round report-dry-run report-management docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1
 
 help: ## Show available targets.
 	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | awk -F '\t' '{printf "  %-18s %s\n", $$1, $$2}'
 
 check-env: ## Validate core env values for the repo-native Version 1 stack.
-	@sh ./scripts/check-env.sh $(ENV_FILE)
+	@./scripts/check-env.sh $(ENV_FILE)
 
 check-env-optional: ## Validate core + optional env values when optional services are enabled.
-	@VALIDATE_OPTIONAL_STACK=1 sh ./scripts/check-env.sh $(ENV_FILE)
+	@VALIDATE_OPTIONAL_STACK=1 ./scripts/check-env.sh $(ENV_FILE)
 
 up: check-env ## Build and start the core Version 1 stack.
 	@mkdir -p reports var/replay-archive var/docker/clawmem
@@ -48,17 +48,20 @@ logs: check-env ## Tail logs for the core Version 1 stack.
 logs-optional: check-env-optional ## Tail logs for the core + optional Version 1 stack.
 	$(COMPOSE_WITH_OPTIONAL) logs -f --tail=100
 
-smoke: check-env ## Run the core stack smoke validation.
-	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --skip-backend --skip-web --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
-
-smoke-optional: check-env-optional ## Run smoke validation with optional overlays enabled.
-	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-optional-file $(COMPOSE_OPTIONAL) --include-optional-stack --compose-env-file $(ENV_FILE) --skip-backend --skip-web --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
-
 clean: check-env ## Remove the core stack and named volumes.
 	$(COMPOSE) down -v --remove-orphans
 
 compose-validate: check-env ## Validate the rendered core Compose configuration.
 	$(COMPOSE) config >/dev/null
+
+compose-validate-optional: check-env-optional ## Validate the rendered core + optional Compose configuration.
+	$(COMPOSE_WITH_OPTIONAL) config >/dev/null
+
+smoke: check-env ## Wait for the core stack to become ready.
+	@STACK_SMOKE_TIMEOUT=$${STACK_SMOKE_TIMEOUT:-120} ./scripts/wait-for-stack.sh
+
+smoke-optional: check-env-optional ## Wait for the core + optional stack to become ready.
+	@VALIDATE_OPTIONAL_STACK=1 STACK_SMOKE_TIMEOUT=$${STACK_SMOKE_TIMEOUT:-120} ./scripts/wait-for-stack.sh
 
 run: check-env ## Run the trust-lab service locally.
 	@mkdir -p .cache/go-build .cache/go-mod

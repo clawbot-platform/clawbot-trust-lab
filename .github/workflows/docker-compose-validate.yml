@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: docker-compose-validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  compose-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sibling foundation repositories
+        run: |
+          git clone --depth 1 https://github.com/clawbot-platform/clawbot-server.git ../clawbot-server
+          git clone --depth 1 https://github.com/clawbot-platform/clawmem.git ../clawmem
+
+      - name: Prepare CI env
+        run: |
+          chmod +x scripts/check-env.sh scripts/prepare-ci-env.sh
+          ./scripts/prepare-ci-env.sh .env.example .env
+
+      - name: Validate core env
+        run: ./scripts/check-env.sh .env
+
+      - name: Validate optional env
+        run: VALIDATE_OPTIONAL_STACK=1 ./scripts/check-env.sh .env
+
+      - name: Validate core compose config
+        run: |
+          docker compose --env-file .env \
+            -f deploy/compose/docker-compose.yml \
+            -f deploy/compose/docker-compose.override.yml \
+            config
+
+      - name: Validate optional compose config
+        run: |
+          docker compose --env-file .env \
+            -f deploy/compose/docker-compose.yml \
+            -f deploy/compose/docker-compose.override.yml \
+            -f deploy/compose/docker-compose.optional.yml \
+            config
+
+      - name: Start core stack
+        run: make up
+
+      - name: Wait for core services
+        run: |
+          set -eu
+
+          wait_for_url() {
+            name="$1"
+            url="$2"
+            attempts="${3:-60}"
+            i=0
+            until [ "$i" -ge "$attempts" ]; do
+              if curl -fsS "$url" >/dev/null; then
+                echo "$name ready: $url"
+                return 0
+              fi
+              i=$((i + 1))
+              sleep 2
+            done
+            echo "Timed out waiting for $name: $url"
+            return 1
+          }
+
+          wait_for_url "control-plane" "http://127.0.0.1:8081/healthz"
+          wait_for_url "clawmem" "http://127.0.0.1:8088/healthz"
+          wait_for_url "trust-lab" "http://127.0.0.1:8090/readyz"
+          wait_for_url "trust-lab-ui" "http://127.0.0.1:8091/"
+
+      - name: Verify core endpoints
+        run: |
+          curl -fsS http://127.0.0.1:8081/healthz
+          curl -fsS http://127.0.0.1:8088/healthz
+          curl -fsS http://127.0.0.1:8090/healthz
+          curl -fsS http://127.0.0.1:8090/readyz
+          curl -fsS http://127.0.0.1:8091/ >/dev/null
+
+      - name: Show compose state on failure
+        if: failure()
+        run: |
+          docker compose --env-file .env \
+            -f deploy/compose/docker-compose.yml \
+            -f deploy/compose/docker-compose.override.yml \
+            ps
+          docker compose --env-file .env \
+            -f deploy/compose/docker-compose.yml \
+            -f deploy/compose/docker-compose.override.yml \
+            logs --tail=200
+
+      - name: Tear down stack
+        if: always()
+        run: make clean
