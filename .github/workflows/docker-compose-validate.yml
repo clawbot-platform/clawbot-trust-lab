@@ -99,6 +99,13 @@ jobs:
             -f deploy/compose/docker-compose.override.yml \
             logs --tail=200 postgres control-plane clawmem trust-lab trust-lab-ui
 
+      - name: Show clawmem logs on failure
+        if: failure()
+        run: |
+          docker compose --env-file .env \
+            -f deploy/compose/docker-compose.yml \
+            -f deploy/compose/docker-compose.override.yml \
+            logs --tail=200 clawmem
       - name: Tear down stack
         if: always()
         run: make clean
