@@ -121,16 +121,10 @@ curl http://127.0.0.1:8091/
 make smoke
 ```
 
-5. Run the full Version 1 validation script:
+5. Run runtime validation against the deployed stack:
 
 ```bash
-python3 ./scripts/version1_validation_report.py \
-  --deployment-mode docker \
-  --compose-file deploy/compose/docker-compose.yml \
-  --compose-override-file deploy/compose/docker-compose.override.yml \
-  --compose-env-file .env \
-  --run-round \
-  --output-dir ./version1-validation-output
+make validate-v1-runtime
 ```
 
 The script is the Version 1 validation and readiness tool. DRQ run reporting lives inside `clawbot-trust-lab` itself.
@@ -196,7 +190,12 @@ These are separate from `scripts/version1_validation_report.py`. The validator c
 
 [`scripts/version1_validation_report.py`](scripts/version1_validation_report.py) is the Version 1 validation/readiness script.
 
-It can validate:
+It supports two explicit modes:
+
+- `--mode developer` for CI, release workstations, and full repo-quality validation
+- `--mode runtime` for appliance-style deployments that only need deployed-system checks
+
+Developer mode can validate:
 
 - docs and release-surface files
 - backend and web quality checks
@@ -206,12 +205,39 @@ It can validate:
 - recommendation and trend endpoints
 - presence of expected report artifacts
 
+Runtime mode validates only the deployed system:
+
+- health and readiness endpoints
+- `/version` build metadata
+- Docker compose state when `--deployment-mode docker` is used
+- benchmark, operator, recommendation, promotion, report, and scheduler endpoints
+- optional round execution when `--run-round` is supplied
+
+Runtime mode does not require local developer tools like `go`, `golangci-lint`, `gosec`, `govulncheck`, or `npm`.
+
 It writes both:
 
 - `version1-validation-report.md`
 - `version1-validation-report.html`
 
-and keeps the older `phase9-validation-report.*` filenames as compatibility outputs.
+Example developer-mode validation:
+
+```bash
+python3 ./scripts/version1_validation_report.py \
+  --mode developer \
+  --deployment-mode docker \
+  --compose-file deploy/compose/docker-compose.yml \
+  --compose-override-file deploy/compose/docker-compose.override.yml \
+  --compose-env-file .env \
+  --run-round \
+  --output-dir ./version1-validation-output
+```
+
+Example runtime-mode validation:
+
+```bash
+make validate-v1-runtime
+```
 
 ## Local source run
 
@@ -221,7 +247,7 @@ If you want a non-Docker source run for development:
 
 ```bash
 cp .env.example .env
-go run ./cmd/trust-lab
+make run
 ```
 
 The expected local startup order is:

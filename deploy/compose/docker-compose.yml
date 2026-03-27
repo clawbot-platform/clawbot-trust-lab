@@ -78,6 +78,10 @@ services:
     build:
       context: ../../..
       dockerfile: clawbot-trust-lab/deploy/docker/clawbot-trust-lab.Dockerfile
+      args:
+        TRUST_LAB_VERSION: ${TRUST_LAB_VERSION:-dev}
+        TRUST_LAB_COMMIT: ${TRUST_LAB_COMMIT:-unknown}
+        TRUST_LAB_BUILD_DATE: ${TRUST_LAB_BUILD_DATE:-unknown}
     restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV}

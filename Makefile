@@ -3,16 +3,27 @@ SHELL := /bin/sh
 COMPOSE_FILE := deploy/compose/docker-compose.yml
 COMPOSE_OVERRIDE := deploy/compose/docker-compose.override.yml
 COMPOSE_OPTIONAL := deploy/compose/docker-compose.optional.yml
+COMPOSE_LOCAL_BIND_FILE := deploy/compose/docker-compose.local-bind.yml
 ENV_FILE := .env
+
 COMPOSE := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE)
 COMPOSE_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f $(COMPOSE_OPTIONAL)
+COMPOSE_LOCAL_BIND := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f $(COMPOSE_LOCAL_BIND_FILE)
+COMPOSE_LOCAL_BIND_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f $(COMPOSE_LOCAL_BIND_FILE) -f $(COMPOSE_OPTIONAL)
+
 GO_ENV := GOCACHE=$(CURDIR)/.cache/go-build GOMODCACHE=$(CURDIR)/.cache/go-mod
 COVERAGE_FILE := coverage.out
 
-.PHONY: help check-env check-env-optional up up-optional down down-optional restart ps ps-optional logs logs-optional clean compose-validate compose-validate-optional smoke smoke-optional run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e validate-v1 report-round report-dry-run report-management docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS := -X 'clawbot-trust-lab/internal/version.Value=$(VERSION)' -X 'clawbot-trust-lab/internal/version.Commit=$(COMMIT)' -X 'clawbot-trust-lab/internal/version.BuildDate=$(BUILD_DATE)'
+TRUST_LAB_BUILD_ENV := TRUST_LAB_VERSION="$(VERSION)" TRUST_LAB_COMMIT="$(COMMIT)" TRUST_LAB_BUILD_DATE="$(BUILD_DATE)"
+
+.PHONY: help check-env check-env-optional up up-optional up-local up-local-optional down down-optional down-local down-local-optional restart ps ps-optional logs logs-optional clean compose-validate compose-validate-optional smoke smoke-optional run test lint coverage coverage-html security ui-dev ui-build ui-test ui-coverage ui-e2e validate-v1 validate-v1-runtime report-round report-dry-run report-management docker-build-v1 docker-up-v1 docker-down-v1 docker-ps-v1
 
 help: ## Show available targets.
-	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | awk -F '\t' '{printf "  %-18s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | awk -F '\t' '{printf "  %-22s %s\n", $$1, $$2}'
 
 check-env: ## Validate core env values for the repo-native Version 1 stack.
 	@./scripts/check-env.sh $(ENV_FILE)
@@ -22,17 +33,31 @@ check-env-optional: ## Validate core + optional env values when optional service
 
 up: check-env ## Build and start the core Version 1 stack.
 	@mkdir -p reports var/replay-archive var/docker/clawmem
-	$(COMPOSE) up -d --build
+	$(TRUST_LAB_BUILD_ENV) $(COMPOSE) up -d --build
 
 up-optional: check-env-optional ## Start the core stack plus optional overlays.
 	@mkdir -p reports var/replay-archive var/docker/clawmem
-	$(COMPOSE_WITH_OPTIONAL) up -d --build
+	$(TRUST_LAB_BUILD_ENV) $(COMPOSE_WITH_OPTIONAL) up -d --build
+
+up-local: check-env ## Start the core stack with local bind mounts for reports/archive/storage.
+	@mkdir -p reports var/replay-archive var/docker/clawmem
+	$(TRUST_LAB_BUILD_ENV) $(COMPOSE_LOCAL_BIND) up -d --build
+
+up-local-optional: check-env-optional ## Start the core + optional stack with local bind mounts.
+	@mkdir -p reports var/replay-archive var/docker/clawmem
+	$(TRUST_LAB_BUILD_ENV) $(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) up -d --build
 
 down: check-env ## Stop the core Version 1 stack.
 	$(COMPOSE) down --remove-orphans
 
 down-optional: check-env-optional ## Stop the core + optional Version 1 stack.
 	$(COMPOSE_WITH_OPTIONAL) down --remove-orphans
+
+down-local: check-env ## Stop the core stack started with local bind mounts.
+	$(COMPOSE_LOCAL_BIND) down --remove-orphans
+
+down-local-optional: check-env-optional ## Stop the core + optional stack started with local bind mounts.
+	$(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) down --remove-orphans
 
 restart: down up ## Restart the core Version 1 stack.
 
@@ -63,9 +88,9 @@ smoke: check-env ## Wait for the core stack to become ready.
 smoke-optional: check-env-optional ## Wait for the core + optional stack to become ready.
 	@VALIDATE_OPTIONAL_STACK=1 STACK_SMOKE_TIMEOUT=$${STACK_SMOKE_TIMEOUT:-120} ./scripts/wait-for-stack.sh
 
-run: check-env ## Run the trust-lab service locally.
+run: ## Run the trust-lab service locally.
 	@mkdir -p .cache/go-build .cache/go-mod
-	@set -a; . ./.env; set +a; $(GO_ENV) go run ./cmd/trust-lab
+	@set -a; . ./.env; set +a; $(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab
 
 test: ## Run the Go test suite.
 	@mkdir -p .cache/go-build .cache/go-mod
@@ -112,10 +137,13 @@ ui-e2e: ## Run the operator UI Playwright smoke tests.
 	cd web && npm run test:e2e
 
 validate-v1: check-env ## Run the full Version 1 validation report against the core stack.
-	python3 ./scripts/version1_validation_report.py --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
+	python3 ./scripts/version1_validation_report.py --mode developer --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
+
+validate-v1-runtime: check-env ## Run runtime-only Version 1 validation against the deployed core stack.
+	python3 ./scripts/version1_validation_report.py --mode runtime --deployment-mode docker --compose-file $(COMPOSE_FILE) --compose-override-file $(COMPOSE_OVERRIDE) --compose-env-file $(ENV_FILE) --run-round --output-dir $${VALIDATION_OUTPUT_DIR:-./version1-validation-output}
 
 docker-build-v1: check-env ## Backward-compatible alias for building the core Version 1 stack images.
-	$(COMPOSE) build
+	$(TRUST_LAB_BUILD_ENV) $(COMPOSE) build
 
 docker-up-v1: up ## Backward-compatible alias for make up.
 
@@ -123,37 +151,23 @@ docker-down-v1: down ## Backward-compatible alias for make down.
 
 docker-ps-v1: ps ## Backward-compatible alias for make ps.
 
-report-round: check-env ## Generate a round report. Set ROUND_ID=<id>.
+report-round: ## Generate a round report. Set ROUND_ID=<id>.
 	@test -n "$(ROUND_ID)" || { echo "Missing ROUND_ID"; exit 1; }
 	@mkdir -p .cache/go-build .cache/go-mod
-	@set -a; . ./.env; set +a; $(GO_ENV) go run ./cmd/trust-lab report round --round-id $(ROUND_ID)
+	@set -a; . ./.env; set +a; $(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab report round --round-id $(ROUND_ID)
 
-report-dry-run: check-env ## Generate a dry-run report. Set WINDOW_LAST=24h or use WINDOW_FROM/WINDOW_TO.
+report-dry-run: ## Generate a dry-run report. Set WINDOW_LAST=24h or use WINDOW_FROM/WINDOW_TO.
 	@mkdir -p .cache/go-build .cache/go-mod
 	@set -a; . ./.env; set +a; if [ -n "$(WINDOW_FROM)" ] || [ -n "$(WINDOW_TO)" ]; then \
-		$(GO_ENV) go run ./cmd/trust-lab report dry-run --from $(WINDOW_FROM) --to $(WINDOW_TO); \
+		$(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab report dry-run --from $(WINDOW_FROM) --to $(WINDOW_TO); \
 	else \
-		$(GO_ENV) go run ./cmd/trust-lab report dry-run --last $${WINDOW_LAST:-24h}; \
+		$(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab report dry-run --last $${WINDOW_LAST:-24h}; \
 	fi
 
-report-management: check-env ## Generate a management report. Set WINDOW_LAST=168h or use WINDOW_FROM/WINDOW_TO.
+report-management: ## Generate a management report. Set WINDOW_LAST=168h or use WINDOW_FROM/WINDOW_TO.
 	@mkdir -p .cache/go-build .cache/go-mod
 	@set -a; . ./.env; set +a; if [ -n "$(WINDOW_FROM)" ] || [ -n "$(WINDOW_TO)" ]; then \
-		$(GO_ENV) go run ./cmd/trust-lab report management --from $(WINDOW_FROM) --to $(WINDOW_TO); \
+		$(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab report management --from $(WINDOW_FROM) --to $(WINDOW_TO); \
 	else \
-		$(GO_ENV) go run ./cmd/trust-lab report management --last $${WINDOW_LAST:-168h}; \
+		$(GO_ENV) go run -ldflags "$(LDFLAGS)" ./cmd/trust-lab report management --last $${WINDOW_LAST:-168h}; \
 	fi
-COMPOSE_LOCAL_BIND := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f deploy/compose/docker-compose.local-bind.yml
-COMPOSE_LOCAL_BIND_WITH_OPTIONAL := docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_OVERRIDE) -f deploy/compose/docker-compose.local-bind.yml -f $(COMPOSE_OPTIONAL)
-
-up-local: check-env
-	$(COMPOSE_LOCAL_BIND) up -d
-
-up-local-optional: check-env-optional
-	$(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) up -d
-
-down-local: check-env
-	$(COMPOSE_LOCAL_BIND) down --remove-orphans
-
-down-local-optional: check-env-optional
-	$(COMPOSE_LOCAL_BIND_WITH_OPTIONAL) down --remove-orphans

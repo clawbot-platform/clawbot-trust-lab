@@ -1,0 +1,2369 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Clawbot Trust Lab Version 1 Validation Report</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 24px; background: #fafafa; color: #222; }
+summary, h1, h2 { color: #111; }
+.stats { display:flex; gap:16px; margin: 16px 0 24px; }
+.badge { padding: 8px 12px; border-radius: 999px; background: #eee; }
+.pass .badge, .pass h2 { color: #0a5; }
+.fail .badge, .fail h2 { color: #b00; }
+.card { background:#fff; border:1px solid #ddd; border-left: 6px solid #ccc; padding:16px; margin: 16px 0; border-radius: 8px; }
+.card.pass { border-left-color: #0a5; }
+.card.fail { border-left-color: #b00; }
+pre { background:#111; color:#eee; padding:12px; overflow:auto; border-radius: 6px; white-space: pre-wrap; }
+code { background:#f0f0f0; padding: 2px 4px; border-radius: 4px; }
+</style></head>
+<body>
+<h1>Clawbot Trust Lab Version 1 Validation Report</h1>
+<div>Generated: 2026-03-27T10:33:23-04:00</div>
+<div>Repo root: <code>/Users/piyushdaiya/Documents/projects/clawbot-platform/clawbot-trust-lab</code></div>
+<div>Validation mode: <code>runtime</code></div>
+<div>Deployment mode: <code>local</code></div>
+<div class="stats">
+  <div class="badge">Passed: 12</div>
+  <div class="badge">Failed: 1</div>
+  <div class="badge">Total: 13</div>
+</div>
+<section class="card"><h2>Executed groups</h2><ul><li>live runtime API checks</li></ul></section>
+<section class="card"><h2>Skipped groups</h2><ul><li>repo docs and release-surface checks (runtime mode)</li><li>Go developer-tooling checks (runtime mode)</li><li>web developer-tooling checks (runtime mode)</li><li>local report artifact directory checks (runtime mode uses API-visible report checks instead)</li></ul></section>
+
+        <section class="card pass">
+          <h2>[PASS] GET /healthz</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/healthz</code></div>
+          <pre>{
+  &quot;status&quot;: &quot;ok&quot;
+}</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /readyz</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/readyz</code></div>
+          <pre>{
+  &quot;status&quot;: &quot;ready&quot;
+}</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /version</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; version=v1.0.0-6-g5e6bfd0-dirty; commit=5e6bfd07d9e4; build_date=2026-03-27T14:22:17Z</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/version</code></div>
+          <pre>{
+  &quot;version&quot;: &quot;v1.0.0-6-g5e6bfd0-dirty&quot;,
+  &quot;commit&quot;: &quot;5e6bfd07d9e4&quot;,
+  &quot;build_date&quot;: &quot;2026-03-27T14:22:17Z&quot;
+}</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/scenarios</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; scenarios=24; missing_groups=none</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/scenarios</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;commerce-s2-delegated-purchase-weak-provenance&quot;,
+      &quot;code&quot;: &quot;S2&quot;,
+      &quot;name&quot;: &quot;Delegated Purchase with Weak Provenance&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v1-weakened-provenance&quot;,
+      &quot;description&quot;: &quot;A delegated purchase carries provenance, but the provenance evidence is materially weak.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;active-mandate&quot;,
+        &quot;weak-provenance&quot;,
+        &quot;delegation-visible&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;payment-authorized&quot;,
+        &quot;candidate-replay-promotion&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;suspicious&quot;,
+        &quot;weak-provenance&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;amount&quot;,
+          &quot;merchant_category&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;merchant_scope_history&quot;,
+          &quot;buyer_history&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;provenance_confidence&quot;,
+          &quot;mandate_status&quot;,
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-s3-approval-removed-after-authorization&quot;,
+      &quot;code&quot;: &quot;S3&quot;,
+      &quot;name&quot;: &quot;Approval Removed After Initial Authorization&quot;,
+      &quot;type&quot;: &quot;commerce_refund_review&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v3-approval-removed&quot;,
+      &quot;description&quot;: &quot;A refund begins with valid authority but approval evidence disappears before execution.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;support-reviewer&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;active-mandate&quot;,
+        &quot;approval-removed&quot;,
+        &quot;agent-refund&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;refund-requested&quot;,
+        &quot;trust-decision-step-up&quot;,
+        &quot;candidate-replay-promotion&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;approval-removed&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;refund_indicator&quot;,
+          &quot;amount&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;approval_history&quot;,
+          &quot;repeat_attempt_count&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;approval_evidence&quot;,
+          &quot;mandate_status&quot;,
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-s5-merchant-scope-drift-delegated-action&quot;,
+      &quot;code&quot;: &quot;S5&quot;,
+      &quot;name&quot;: &quot;Merchant or Category Scope Drift Under Delegated Action&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v6-merchant-scope-drift&quot;,
+      &quot;description&quot;: &quot;A delegated purchase attempts to move outside the buyer&#x27;s prior merchant or category scope.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;delegation-visible&quot;,
+        &quot;merchant-scope-drift&quot;,
+        &quot;category-drift&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;trust-decision-review-required&quot;,
+        &quot;candidate-replay-promotion&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;scope-drift&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;amount&quot;,
+          &quot;merchant_category&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;merchant_scope_history&quot;,
+          &quot;category_history&quot;,
+          &quot;recent_attempt_count&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;mandate_status&quot;,
+          &quot;provenance_confidence&quot;,
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v1-weakened-provenance&quot;,
+      &quot;code&quot;: &quot;V1&quot;,
+      &quot;name&quot;: &quot;Variant Weakened Provenance&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v1-weakened-provenance&quot;,
+      &quot;description&quot;: &quot;Variant that weakens provenance while keeping the rest of a delegated purchase intact.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;weak-provenance&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;trust-gap-low-provenance&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;weakened-provenance&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;amount&quot;,
+          &quot;merchant_category&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;buyer_history&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;provenance_confidence&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+      &quot;code&quot;: &quot;V2&quot;,
+      &quot;name&quot;: &quot;Variant Expired or Inactive Mandate&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+      &quot;description&quot;: &quot;Variant that expires mandate coverage before a delegated action executes.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;expired-mandate&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;trust-decision-review-required&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;expired-mandate&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;amount&quot;,
+          &quot;merchant_category&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;recent_attempt_count&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;mandate_status&quot;,
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v3-approval-removed&quot;,
+      &quot;code&quot;: &quot;V3&quot;,
+      &quot;name&quot;: &quot;Variant Approval Removed&quot;,
+      &quot;type&quot;: &quot;commerce_refund_review&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v3-approval-removed&quot;,
+      &quot;description&quot;: &quot;Variant that removes approval evidence from an agent-driven refund.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;support-reviewer&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;approval-removed&quot;,
+        &quot;agent-refund&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;refund-requested&quot;,
+        &quot;trust-decision-step-up&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;approval-removed&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;refund_indicator&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;approval_history&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;approval_evidence&quot;,
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+      &quot;code&quot;: &quot;V4&quot;,
+      &quot;name&quot;: &quot;Variant Actor Switch from Human to Agent&quot;,
+      &quot;type&quot;: &quot;commerce_refund_review&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v4-actor-switch&quot;,
+      &quot;description&quot;: &quot;Variant that flips a previously human refund path into an agent-driven refund without strengthening controls.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;support-reviewer&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;actor-switch&quot;,
+        &quot;delegation-visible&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;refund-requested&quot;,
+        &quot;trust-decision-review-required&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;actor-switch&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;refund_indicator&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;recent_attempt_count&quot;,
+          &quot;approval_history&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;delegation_mode&quot;,
+          &quot;approval_evidence&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v5-repeat-attempt-escalation&quot;,
+      &quot;code&quot;: &quot;V5&quot;,
+      &quot;name&quot;: &quot;Variant Repeat Attempt Escalation&quot;,
+      &quot;type&quot;: &quot;commerce_refund_review&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v5-repeat-attempt-escalation&quot;,
+      &quot;description&quot;: &quot;Variant that escalates the number of prior similar refund attempts.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;support-reviewer&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;repeat-refund-pattern&quot;,
+        &quot;agent-refund&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;refund-requested&quot;,
+        &quot;trust-decision-step-up&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;repeat-attempt&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;refund_indicator&quot;,
+          &quot;amount&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;repeat_attempt_count&quot;,
+          &quot;historical_refund_rate&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;delegation_mode&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v6-merchant-scope-drift&quot;,
+      &quot;code&quot;: &quot;V6&quot;,
+      &quot;name&quot;: &quot;Variant Merchant Scope Drift&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v6-merchant-scope-drift&quot;,
+      &quot;description&quot;: &quot;Variant that moves a delegated purchase into a new merchant scope.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;merchant-scope-drift&quot;,
+        &quot;delegation-visible&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;trust-decision-review-required&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;challenger&quot;,
+        &quot;variant&quot;,
+        &quot;scope-drift&quot;
+      ],
+      &quot;feature_model&quot;: {
+        &quot;tier_a&quot;: [
+          &quot;amount&quot;,
+          &quot;merchant_category&quot;,
+          &quot;delegated_indicator&quot;
+        ],
+        &quot;tier_b&quot;: [
+          &quot;merchant_scope_history&quot;,
+          &quot;category_history&quot;
+        ],
+        &quot;tier_c&quot;: [
+          &quot;delegation_mode&quot;,
+          &quot;mandate_status&quot;
+        ]
+      },
+      &quot;created_at&quot;: &quot;2026-03-27T14:22:18.141109Z&quot;
+    },
+    {
+      &quot;id&quot;: &quot;commerce-v7-high-value-delegated-purchase&quot;,
+      &quot;code&quot;: &quot;V7&quot;,
+      &quot;name&quot;: &quot;Variant High-Value Delegated Purchase&quot;,
+      &quot;type&quot;: &quot;commerce_purchase&quot;,
+      &quot;family&quot;: &quot;commerce&quot;,
+      &quot;set_role&quot;: &quot;living&quot;,
+      &quot;variant_id&quot;: &quot;variant-v7-high-value-delegated-purchase&quot;,
+      &quot;description&quot;: &quot;Variant that materially increases delegated purchase value beyond the usual buyer pattern.&quot;,
+      &quot;pack_id&quot;: &quot;challenger-pack&quot;,
+      &quot;version&quot;: &quot;v2&quot;,
+      &quot;actors&quot;: [
+        &quot;buyer&quot;,
+        &quot;agent&quot;,
+        &quot;merchant&quot;
+      ],
+      &quot;trust_signals&quot;: [
+        &quot;high-value-purchase&quot;,
+        &quot;delegation-visible&quot;
+      ],
+      &quot;expected_outcomes&quot;: [
+        &quot;order-created&quot;,
+        &quot;trust-decision-review-required&quot;
+      ],
+      &quot;tags&quot;: [
+        &quot;commerce&quot;,
+        &quot;phase-9&quot;,
+        &quot;chall</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/benchmark/rounds</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; rounds=22; rounds_with_prod_bridge=22; rounds_with_tier_c_usage=18; recommendation_totals=117</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/benchmark/rounds</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;round-20260327001551&quot;,
+      &quot;scenario_family&quot;: &quot;commerce&quot;,
+      &quot;detector_version&quot;: &quot;dev&quot;,
+      &quot;stable_scenario_refs&quot;: [
+        &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+        &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+        &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+        &quot;commerce-h1-direct-human-purchase&quot;,
+        &quot;commerce-h2-human-refund-valid-history&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;
+      ],
+      &quot;challenger_variant_refs&quot;: [
+        &quot;variant-v1-weakened-provenance&quot;,
+        &quot;variant-v2-expired-mandate&quot;,
+        &quot;variant-v3-approval-removed&quot;,
+        &quot;variant-v4-actor-switch&quot;,
+        &quot;variant-v5-repeat-attempt-escalation&quot;,
+        &quot;variant-v6-merchant-scope-drift&quot;,
+        &quot;variant-v7-high-value-delegated-purchase&quot;,
+        &quot;variant-s2-weak-provenance&quot;,
+        &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;variant-s5-scope-drift&quot;
+      ],
+      &quot;replay_case_refs&quot;: [
+        &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;rc-v2-expired-inactive-mandate&quot;,
+        &quot;rc-v3-approval-removed&quot;
+      ],
+      &quot;started_at&quot;: &quot;2026-03-27T00:15:51.579522Z&quot;,
+      &quot;completed_at&quot;: &quot;2026-03-27T00:15:52.135474Z&quot;,
+      &quot;round_status&quot;: &quot;completed&quot;,
+      &quot;report_dir&quot;: &quot;reports/round-20260327001551&quot;,
+      &quot;scenario_results&quot;: [
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a1-agent-assisted-purchase-valid-controls&quot;,
+            &quot;rc-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a2-fully-delegated-replenishment-purchase&quot;,
+            &quot;rc-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a3-agent-assisted-refund-approval-evidence&quot;,
+            &quot;rc-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-h1-direct-human-purchase&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-h1-direct-human-purchase&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-h1-direct-human-purchase&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-h1-direct-human-purchase&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-h1-direct-human-purchase&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-h1-direct-human-purchase&quot;,
+            &quot;rc-h1-direct-human-purchase&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-h1-direct-human-purchase&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-h2-human-refund-valid-history&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-h2-human-refund-valid-history&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-h2-human-refund-valid-history&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-h2-human-refund-valid-history&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-h2-human-refund-valid-history&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-h2-human-refund-valid-history&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-h2-human-refund-valid-history&quot;,
+            &quot;rc-h2-human-refund-valid-history&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-h2-human-refund-valid-history&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-s1-refund-weak-authorization&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-s1-refund-weak-authorization&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-s1-refund-weak-authorization&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-s1-refund-weak-authorization&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-s1-refund-weak-authorization&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-s1-refund-weak-authorization&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-s1-refund-weak-authorization&quot;,
+            &quot;rc-s1-refund-weak-authorization&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-s1-refund-weak-authorization&quot;,
+          &quot;final_detection_status&quot;: &quot;step_up_required&quot;,
+          &quot;final_recommendation&quot;: &quot;step_up&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;agent_refund_without_approval&quot;,
+            &quot;missing_mandate_delegated_action&quot;,
+            &quot;missing_provenance_sensitive_action&quot;,
+            &quot;prior_step_up_decision&quot;,
+            &quot;refund_weak_authorization&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;step_up_required&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-s4-repeated-agent-refund-attempts&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-s4-repeated-agent-refund-attempts&quot;,
+            &quot;rc-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-s4-repeated-agent-refund-attempts&quot;,
+          &quot;final_detection_status&quot;: &quot;suspicious&quot;,
+          &quot;final_recommendation&quot;: &quot;review&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;prior_step_up_decision&quot;,
+            &quot;repeat_suspicious_context&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;suspicious&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-living-commerce-v1-weakened-provenance&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-v1-weakened-provenance&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;living&quot;,
+          &quot;challenger_variant_id&quot;: &quot;variant-v1-weakened-provenance&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-v1-weakened-provenance&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-v1-weakened-provenance&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-v1-weakened-provenance&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-v1-weakened-provenance&quot;,
+            &quot;rc-v1-weakened-provenance&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-v1-weakened-provenance&quot;,
+          &quot;final_detection_status&quot;: &quot;suspicious&quot;,
+          &quot;final_recommendation&quot;: &quot;review&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;missing_provenance_sensitive_action&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;suspicious&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;challenger variant met the expected minimum detector posture&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-living-commerce-v2-expired-inactive-mandate&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;living&quot;,
+          &quot;challenger_variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/operator/rounds</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; rounds=22; rounds_with_prod_bridge=22; rounds_with_tier_c_usage=18; recommendation_totals=117</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/operator/rounds</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;round-20260327001551&quot;,
+      &quot;scenario_family&quot;: &quot;commerce&quot;,
+      &quot;detector_version&quot;: &quot;dev&quot;,
+      &quot;stable_scenario_refs&quot;: [
+        &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+        &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+        &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+        &quot;commerce-h1-direct-human-purchase&quot;,
+        &quot;commerce-h2-human-refund-valid-history&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;
+      ],
+      &quot;challenger_variant_refs&quot;: [
+        &quot;variant-v1-weakened-provenance&quot;,
+        &quot;variant-v2-expired-mandate&quot;,
+        &quot;variant-v3-approval-removed&quot;,
+        &quot;variant-v4-actor-switch&quot;,
+        &quot;variant-v5-repeat-attempt-escalation&quot;,
+        &quot;variant-v6-merchant-scope-drift&quot;,
+        &quot;variant-v7-high-value-delegated-purchase&quot;,
+        &quot;variant-s2-weak-provenance&quot;,
+        &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;variant-s5-scope-drift&quot;
+      ],
+      &quot;replay_case_refs&quot;: [
+        &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;rc-v2-expired-inactive-mandate&quot;,
+        &quot;rc-v3-approval-removed&quot;
+      ],
+      &quot;started_at&quot;: &quot;2026-03-27T00:15:51.579522Z&quot;,
+      &quot;completed_at&quot;: &quot;2026-03-27T00:15:52.135474Z&quot;,
+      &quot;round_status&quot;: &quot;completed&quot;,
+      &quot;report_dir&quot;: &quot;reports/round-20260327001551&quot;,
+      &quot;scenario_results&quot;: [
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a1-agent-assisted-purchase-valid-controls&quot;,
+            &quot;rc-a1-agent-assisted-purchase-valid-controls&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a1-agent-assisted-purchase-valid-controls&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a2-fully-delegated-replenishment-purchase&quot;,
+            &quot;rc-a2-fully-delegated-replenishment-purchase&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a2-fully-delegated-replenishment-purchase&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-a3-agent-assisted-refund-approval-evidence&quot;,
+            &quot;rc-a3-agent-assisted-refund-approval-evidence&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-a3-agent-assisted-refund-approval-evidence&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-h1-direct-human-purchase&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-h1-direct-human-purchase&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-h1-direct-human-purchase&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-h1-direct-human-purchase&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-h1-direct-human-purchase&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-h1-direct-human-purchase&quot;,
+            &quot;rc-h1-direct-human-purchase&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-h1-direct-human-purchase&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-h2-human-refund-valid-history&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-h2-human-refund-valid-history&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-h2-human-refund-valid-history&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-h2-human-refund-valid-history&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-h2-human-refund-valid-history&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-h2-human-refund-valid-history&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-h2-human-refund-valid-history&quot;,
+            &quot;rc-h2-human-refund-valid-history&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-h2-human-refund-valid-history&quot;,
+          &quot;final_detection_status&quot;: &quot;clean&quot;,
+          &quot;final_recommendation&quot;: &quot;allow&quot;,
+          &quot;triggered_rule_ids&quot;: null,
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;clean&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-s1-refund-weak-authorization&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-s1-refund-weak-authorization&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-s1-refund-weak-authorization&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-s1-refund-weak-authorization&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-s1-refund-weak-authorization&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-s1-refund-weak-authorization&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-s1-refund-weak-authorization&quot;,
+            &quot;rc-s1-refund-weak-authorization&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-s1-refund-weak-authorization&quot;,
+          &quot;final_detection_status&quot;: &quot;step_up_required&quot;,
+          &quot;final_recommendation&quot;: &quot;step_up&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;agent_refund_without_approval&quot;,
+            &quot;missing_mandate_delegated_action&quot;,
+            &quot;missing_provenance_sensitive_action&quot;,
+            &quot;prior_step_up_decision&quot;,
+            &quot;refund_weak_authorization&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;step_up_required&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-stable-commerce-s4-repeated-agent-refund-attempts&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;stable&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;refund_refs&quot;: [
+            &quot;refund-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-s4-repeated-agent-refund-attempts&quot;,
+            &quot;rc-s4-repeated-agent-refund-attempts&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-s4-repeated-agent-refund-attempts&quot;,
+          &quot;final_detection_status&quot;: &quot;suspicious&quot;,
+          &quot;final_recommendation&quot;: &quot;review&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;prior_step_up_decision&quot;,
+            &quot;repeat_suspicious_context&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;suspicious&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;stable baseline met its expected detector outcome&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-living-commerce-v1-weakened-provenance&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-v1-weakened-provenance&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;living&quot;,
+          &quot;challenger_variant_id&quot;: &quot;variant-v1-weakened-provenance&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;: [
+            &quot;order-v1-weakened-provenance&quot;
+          ],
+          &quot;refund_refs&quot;: null,
+          &quot;trust_decision_refs&quot;: [
+            &quot;decision-v1-weakened-provenance&quot;
+          ],
+          &quot;replay_case_refs&quot;: [
+            &quot;rc-v1-weakened-provenance&quot;
+          ],
+          &quot;memory_record_refs&quot;: [
+            &quot;ta-v1-weakened-provenance&quot;,
+            &quot;rc-v1-weakened-provenance&quot;
+          ],
+          &quot;detection_result_ref&quot;: &quot;det-order-v1-weakened-provenance&quot;,
+          &quot;final_detection_status&quot;: &quot;suspicious&quot;,
+          &quot;final_recommendation&quot;: &quot;review&quot;,
+          &quot;triggered_rule_ids&quot;: [
+            &quot;missing_provenance_sensitive_action&quot;
+          ],
+          &quot;promoted_to_replay&quot;: false,
+          &quot;expected_minimum_status&quot;: &quot;suspicious&quot;,
+          &quot;passed&quot;: true,
+          &quot;notes&quot;: [
+            &quot;tier_c_used&quot;,
+            &quot;challenger variant met the expected minimum detector posture&quot;
+          ]
+        },
+        {
+          &quot;id&quot;: &quot;sr-living-commerce-v2-expired-inactive-mandate&quot;,
+          &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+          &quot;scenario_family&quot;: &quot;commerce&quot;,
+          &quot;set_kind&quot;: &quot;living&quot;,
+          &quot;challenger_variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+          &quot;execution_status&quot;: &quot;completed&quot;,
+          &quot;order_refs&quot;</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/operator/promotions</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; promotions=141; distinct_rounds=22</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/operator/promotions</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-weakened-provenance&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-challenger-weakened-provenance-purchase&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-challenger-weakened-provenance-purchase&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-27T00:15:52.066139Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-s3-approval-removed-after-authorization&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-27T00:15:52.089424Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260327001551-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v2-expired-inactive-mandate&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v2-expired-inactive-mandate&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v2-expired-inactive-mandate&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-27T00:15:52.113008Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v3-approval-removed&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v3-approval-removed&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v3-approval-removed&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v3-approval-removed&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v3-approval-removed&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-27T00:15:52.135263Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235545-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-weakened-provenance&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-challenger-weakened-provenance-purchase&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-challenger-weakened-provenance-purchase&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:46.019675Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235545-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-s3-approval-removed-after-authorization&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:46.043533Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235545-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v2-expired-inactive-mandate&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v2-expired-inactive-mandate&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v2-expired-inactive-mandate&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:46.066293Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235545-commerce-v3-approval-removed-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v3-approval-removed&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v3-approval-removed&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v3-approval-removed&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v3-approval-removed&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v3-approval-removed&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:46.090089Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235501-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-weakened-provenance&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-challenger-weakened-provenance-purchase&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-challenger-weakened-provenance-purchase&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:02.278603Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235501-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-s3-approval-removed-after-authorization&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:02.299538Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235501-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v2-expired-mandate&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v2-expired-inactive-mandate&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v2-expired-inactive-mandate&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v2-expired-inactive-mandate&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:02.320203Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326235501-commerce-v3-approval-removed-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v3-approval-removed&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-v3-approval-removed&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-v3-approval-removed&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-v3-approval-removed&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-v3-approval-removed&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T23:55:02.341605Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326225239-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-weakened-provenance&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-challenger-weakened-provenance-purchase&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-challenger-weakened-provenance-purchase&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T22:52:39.67427Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326225239-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;challenger_variant_id&quot;: &quot;variant-s3-approval-removed-after-authorization&quot;,
+        &quot;promotion_reason&quot;: &quot;meaningful_regression&quot;,
+        &quot;rationale&quot;: &quot;Previously promoted replay case regressed below its expected detection floor.&quot;,
+        &quot;detection_result_ref&quot;: &quot;det-order-s3-approval-removed-after-authorization&quot;,
+        &quot;replay_case_ref&quot;: &quot;rc-s3-approval-removed-after-authorization&quot;,
+        &quot;scenario_result_ref&quot;: &quot;sr-replay_regression-commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;promoted&quot;: true,
+        &quot;created_at&quot;: &quot;2026-03-26T22:52:39.698772Z&quot;
+      }
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+      &quot;promotion&quot;: {
+        &quot;id&quot;: &quot;promo-round-20260326225239-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;scenario_id&quot;: &quot;commerce-v2-expired-inactive-mandate&quot;</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/benchmark/recommendations</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; recommendations=117; types=add_to_replay_stable_set, investigate_repeat_refund_pattern, monitor_in_shadow_mode, require_provenance_for_delegated_purchase, require_step_up_for_delegated_refunds, tighten_refund_review_rule</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/benchmark/recommendations</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-replay&quot;,
+      &quot;type&quot;: &quot;add_to_replay_stable_set&quot;,
+      &quot;rationale&quot;: &quot;Promoted challenger cases exposed meaningful misses or regressions and should move into replay so future benchmark rounds preserve the gain instead of rediscovering the same failure.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Add the promoted challenger cases to the replay stable set and re-run the sidecar benchmark before changing any incumbent production rule.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Use replay promotion as a safe bridge between benchmark discovery and incumbent fraud-stack tuning.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-refund-review&quot;,
+      &quot;type&quot;: &quot;tighten_refund_review_rule&quot;,
+      &quot;rationale&quot;: &quot;Refund scenarios still surfaced weak-authorization paths that the incumbent fraud stack should queue or review more aggressively before payout or refund completion.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;refund_weak_authorization&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Tighten refund review thresholds for weak or missing authority signals and compare the sidecar recommendation rate with current manual-review outcomes.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Fits naturally beside existing refund review queues and PSP-side refund controls.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-delegated-refund-step-up&quot;,
+      &quot;type&quot;: &quot;require_step_up_for_delegated_refunds&quot;,
+      &quot;rationale&quot;: &quot;Agent-driven refund flows without approval evidence remain too risky to treat like ordinary refund traffic and should be routed into explicit step-up review.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;agent_refund_without_approval&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require step-up or human approval evidence for delegated refunds and compare the recommendation-only sidecar output with current queue decisions.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to augment incumbent delegated-refund controls rather than replace them.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-repeat-refund&quot;,
+      &quot;type&quot;: &quot;investigate_repeat_refund_pattern&quot;,
+      &quot;rationale&quot;: &quot;Repeated suspicious refund behavior is persisting across replay and benchmark history, which makes it a good candidate for targeted investigation and queue tuning beside the current fraud stack.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;repeat_suspicious_context&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Investigate repeat refund patterns, compare them with incumbent case outcomes, and tune queueing logic in shadow mode before any blocking change.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Best used as an investigative sidecar signal that feeds existing fraud-review workflows.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-delegated-provenance&quot;,
+      &quot;type&quot;: &quot;require_provenance_for_delegated_purchase&quot;,
+      &quot;rationale&quot;: &quot;Delegated purchase paths with weak or missing provenance should not be treated as equivalent to ordinary human commerce, especially when they drift into new behavior patterns.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s2-delegated-purchase-weak-provenance&quot;,
+        &quot;commerce-v1-weakened-provenance&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;missing_provenance_sensitive_action&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require provenance for delegated purchases or keep them in recommendation-only shadow review until the team is comfortable tightening incumbent purchase controls.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Useful as a sidecar recommendation beside current purchase review thresholds and PSP checks.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-shadow&quot;,
+      &quot;type&quot;: &quot;monitor_in_shadow_mode&quot;,
+      &quot;rationale&quot;: &quot;This round is best used as a recommendation-only sidecar beside the incumbent fraud stack so the team can compare benchmark findings against existing review and decision outcomes.&quot;,
+      &quot;priority&quot;: &quot;low&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+        &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+        &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+        &quot;commerce-h1-direct-human-purchase&quot;,
+        &quot;commerce-h2-human-refund-valid-history&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s2-delegated-purchase-weak-provenance&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+        &quot;commerce-s5-merchant-scope-drift-delegated-action&quot;,
+        &quot;commerce-v1-weakened-provenance&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;,
+        &quot;commerce-v6-merchant-scope-drift&quot;,
+        &quot;commerce-v7-high-value-delegated-purchase&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Keep the harness in shadow mode, compare its outputs with current queue and policy outcomes, and only trial control changes after replay confirms the improvement.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to run beside existing fraud rules, queueing, and PSP controls without blocking live traffic.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-replay&quot;,
+      &quot;type&quot;: &quot;add_to_replay_stable_set&quot;,
+      &quot;rationale&quot;: &quot;Promoted challenger cases exposed meaningful misses or regressions and should move into replay so future benchmark rounds preserve the gain instead of rediscovering the same failure.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260326235545-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Add the promoted challenger cases to the replay stable set and re-run the sidecar benchmark before changing any incumbent production rule.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Use replay promotion as a safe bridge between benchmark discovery and incumbent fraud-stack tuning.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-refund-review&quot;,
+      &quot;type&quot;: &quot;tighten_refund_review_rule&quot;,
+      &quot;rationale&quot;: &quot;Refund scenarios still surfaced weak-authorization paths that the incumbent fraud stack should queue or review more aggressively before payout or refund completion.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;refund_weak_authorization&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Tighten refund review thresholds for weak or missing authority signals and compare the sidecar recommendation rate with current manual-review outcomes.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Fits naturally beside existing refund review queues and PSP-side refund controls.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-delegated-refund-step-up&quot;,
+      &quot;type&quot;: &quot;require_step_up_for_delegated_refunds&quot;,
+      &quot;rationale&quot;: &quot;Agent-driven refund flows without approval evidence remain too risky to treat like ordinary refund traffic and should be routed into explicit step-up review.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260326235545-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;agent_refund_without_approval&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require step-up or human approval evidence for delegated refunds and compare the recommendation-only sidecar output with current queue decisions.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to augment incumbent delegated-refund controls rather than replace them.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-repeat-refund&quot;,
+      &quot;type&quot;: &quot;investigate_repeat_refund_pattern&quot;,
+      &quot;rationale&quot;: &quot;Repeated suspicious refund behavior is persisting across replay and benchmark history, which makes it a good candidate for targeted investigation and queue tuning beside the current fraud stack.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+     </pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/operator/recommendations</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; recommendations=117; types=add_to_replay_stable_set, investigate_repeat_refund_pattern, monitor_in_shadow_mode, require_provenance_for_delegated_purchase, require_step_up_for_delegated_refunds, tighten_refund_review_rule</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/operator/recommendations</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-replay&quot;,
+      &quot;type&quot;: &quot;add_to_replay_stable_set&quot;,
+      &quot;rationale&quot;: &quot;Promoted challenger cases exposed meaningful misses or regressions and should move into replay so future benchmark rounds preserve the gain instead of rediscovering the same failure.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Add the promoted challenger cases to the replay stable set and re-run the sidecar benchmark before changing any incumbent production rule.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Use replay promotion as a safe bridge between benchmark discovery and incumbent fraud-stack tuning.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-refund-review&quot;,
+      &quot;type&quot;: &quot;tighten_refund_review_rule&quot;,
+      &quot;rationale&quot;: &quot;Refund scenarios still surfaced weak-authorization paths that the incumbent fraud stack should queue or review more aggressively before payout or refund completion.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;refund_weak_authorization&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Tighten refund review thresholds for weak or missing authority signals and compare the sidecar recommendation rate with current manual-review outcomes.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Fits naturally beside existing refund review queues and PSP-side refund controls.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-delegated-refund-step-up&quot;,
+      &quot;type&quot;: &quot;require_step_up_for_delegated_refunds&quot;,
+      &quot;rationale&quot;: &quot;Agent-driven refund flows without approval evidence remain too risky to treat like ordinary refund traffic and should be routed into explicit step-up review.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;agent_refund_without_approval&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require step-up or human approval evidence for delegated refunds and compare the recommendation-only sidecar output with current queue decisions.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to augment incumbent delegated-refund controls rather than replace them.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-repeat-refund&quot;,
+      &quot;type&quot;: &quot;investigate_repeat_refund_pattern&quot;,
+      &quot;rationale&quot;: &quot;Repeated suspicious refund behavior is persisting across replay and benchmark history, which makes it a good candidate for targeted investigation and queue tuning beside the current fraud stack.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;repeat_suspicious_context&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Investigate repeat refund patterns, compare them with incumbent case outcomes, and tune queueing logic in shadow mode before any blocking change.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Best used as an investigative sidecar signal that feeds existing fraud-review workflows.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-delegated-provenance&quot;,
+      &quot;type&quot;: &quot;require_provenance_for_delegated_purchase&quot;,
+      &quot;rationale&quot;: &quot;Delegated purchase paths with weak or missing provenance should not be treated as equivalent to ordinary human commerce, especially when they drift into new behavior patterns.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s2-delegated-purchase-weak-provenance&quot;,
+        &quot;commerce-v1-weakened-provenance&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;missing_provenance_sensitive_action&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require provenance for delegated purchases or keep them in recommendation-only shadow review until the team is comfortable tightening incumbent purchase controls.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Useful as a sidecar recommendation beside current purchase review thresholds and PSP checks.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260327001551-shadow&quot;,
+      &quot;type&quot;: &quot;monitor_in_shadow_mode&quot;,
+      &quot;rationale&quot;: &quot;This round is best used as a recommendation-only sidecar beside the incumbent fraud stack so the team can compare benchmark findings against existing review and decision outcomes.&quot;,
+      &quot;priority&quot;: &quot;low&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-a1-agent-assisted-purchase-valid-controls&quot;,
+        &quot;commerce-a2-fully-delegated-replenishment-purchase&quot;,
+        &quot;commerce-a3-agent-assisted-refund-approval-evidence&quot;,
+        &quot;commerce-h1-direct-human-purchase&quot;,
+        &quot;commerce-h2-human-refund-valid-history&quot;,
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s2-delegated-purchase-weak-provenance&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s4-repeated-agent-refund-attempts&quot;,
+        &quot;commerce-s5-merchant-scope-drift-delegated-action&quot;,
+        &quot;commerce-v1-weakened-provenance&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;,
+        &quot;commerce-v6-merchant-scope-drift&quot;,
+        &quot;commerce-v7-high-value-delegated-purchase&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260327001551-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260327001551-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Keep the harness in shadow mode, compare its outputs with current queue and policy outcomes, and only trial control changes after replay confirms the improvement.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to run beside existing fraud rules, queueing, and PSP controls without blocking live traffic.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-replay&quot;,
+      &quot;type&quot;: &quot;add_to_replay_stable_set&quot;,
+      &quot;rationale&quot;: &quot;Promoted challenger cases exposed meaningful misses or regressions and should move into replay so future benchmark rounds preserve the gain instead of rediscovering the same failure.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-challenger-weakened-provenance-purchase&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v2-expired-inactive-mandate&quot;,
+        &quot;commerce-v3-approval-removed&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260326235545-commerce-challenger-weakened-provenance-purchase-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v2-expired-inactive-mandate-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Add the promoted challenger cases to the replay stable set and re-run the sidecar benchmark before changing any incumbent production rule.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Use replay promotion as a safe bridge between benchmark discovery and incumbent fraud-stack tuning.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-refund-review&quot;,
+      &quot;type&quot;: &quot;tighten_refund_review_rule&quot;,
+      &quot;rationale&quot;: &quot;Refund scenarios still surfaced weak-authorization paths that the incumbent fraud stack should queue or review more aggressively before payout or refund completion.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;refund_weak_authorization&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Tighten refund review thresholds for weak or missing authority signals and compare the sidecar recommendation rate with current manual-review outcomes.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Fits naturally beside existing refund review queues and PSP-side refund controls.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-delegated-refund-step-up&quot;,
+      &quot;type&quot;: &quot;require_step_up_for_delegated_refunds&quot;,
+      &quot;rationale&quot;: &quot;Agent-driven refund flows without approval evidence remain too risky to treat like ordinary refund traffic and should be routed into explicit step-up review.&quot;,
+      &quot;priority&quot;: &quot;high&quot;,
+      &quot;linked_round_id&quot;: &quot;round-20260326235545&quot;,
+      &quot;linked_scenario_ids&quot;: [
+        &quot;commerce-s1-refund-weak-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-s3-approval-removed-after-authorization&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v3-approval-removed&quot;,
+        &quot;commerce-v4-actor-switch-human-to-agent&quot;,
+        &quot;commerce-v5-repeat-attempt-escalation&quot;
+      ],
+      &quot;linked_promotion_ids&quot;: [
+        &quot;promo-round-20260326235545-commerce-s3-approval-removed-after-authorization-regression&quot;,
+        &quot;promo-round-20260326235545-commerce-v3-approval-removed-regression&quot;
+      ],
+      &quot;supporting_rule_ids&quot;: [
+        &quot;agent_refund_without_approval&quot;
+      ],
+      &quot;suggested_action&quot;: &quot;Require step-up or human approval evidence for delegated refunds and compare the recommendation-only sidecar output with current queue decisions.&quot;,
+      &quot;existing_control_integration_note&quot;: &quot;Designed to augment incumbent delegated-refund controls rather than replace them.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;rec-round-20260326235545-repeat-refund&quot;,
+      &quot;type&quot;: &quot;investigate_repeat_refund_pattern&quot;,
+      &quot;rationale&quot;: &quot;Repeated suspicious refund behavior is persisting across replay and benchmark history, which makes it a good candidate for targeted investigation and queue tuning beside the current fraud stack.&quot;,
+      &quot;priority&quot;: &quot;moderate&quot;,
+     </pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/benchmark/trends/summary</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; present_keys=5; missing=none</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/benchmark/trends/summary</code></div>
+          <pre>{
+  &quot;data&quot;: {
+    &quot;rounds_executed&quot;: 22,
+    &quot;promotions_over_time&quot;: [
+      {
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326214625&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326202835&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326184056&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325235027&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325233731&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230108&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230022&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220029&quot;,
+        &quot;value&quot;: 22
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220013&quot;,
+        &quot;value&quot;: 19
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215958&quot;,
+        &quot;value&quot;: 16
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215157&quot;,
+        &quot;value&quot;: 13
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215142&quot;,
+        &quot;value&quot;: 10
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215127&quot;,
+        &quot;value&quot;: 7
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325214203&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325180315&quot;,
+        &quot;value&quot;: 2
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325172529&quot;,
+        &quot;value&quot;: 1
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325143447&quot;,
+        &quot;value&quot;: 2
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325141726&quot;,
+        &quot;value&quot;: 1
+      }
+    ],
+    &quot;replay_pass_rate_over_time&quot;: [
+      {
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326214625&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326202835&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326184056&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325235027&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325233731&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230108&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230022&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220029&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220013&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215958&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215157&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215142&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215127&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325214203&quot;,
+        &quot;value&quot;: 0.5
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325180315&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325172529&quot;,
+        &quot;value&quot;: 1
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325143447&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325141726&quot;,
+        &quot;value&quot;: 1
+      }
+    ],
+    &quot;new_blind_spots_discovered&quot;: 22,
+    &quot;regressions_observed&quot;: 0,
+    &quot;recommendation_counts_by_type&quot;: {
+      &quot;add_to_replay_stable_set&quot;: 22,
+      &quot;investigate_repeat_refund_pattern&quot;: 11,
+      &quot;monitor_in_shadow_mode&quot;: 22,
+      &quot;require_provenance_for_delegated_purchase&quot;: 18,
+      &quot;require_step_up_for_delegated_refunds&quot;: 22,
+      &quot;tighten_refund_review_rule&quot;: 22
+    },
+    &quot;top_recurring_evasion_patterns&quot;: [
+      &quot;No previously promoted replay cases were available for regression retest.&quot;,
+      &quot;Replay regression pass rate fell to 0.00.&quot;,
+      &quot;commerce-challenger-weakened-provenance-purchase promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-challenger-weakened-provenance-purchase promoted because Suspicious challenger behavior evaluated as clean..&quot;,
+      &quot;commerce-s3-approval-removed-after-authorization promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-s3-approval-removed-after-authorization promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-v2-expired-inactive-mandate promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-v2-expired-inactive-mandate promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-v3-approval-removed promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-v3-approval-removed promoted because Previously promoted replay case regressed below its expected detection floor..&quot;
+    ]
+  }
+}</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/operator/trends/summary</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; present_keys=5; missing=none</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/operator/trends/summary</code></div>
+          <pre>{
+  &quot;data&quot;: {
+    &quot;rounds_executed&quot;: 22,
+    &quot;promotions_over_time&quot;: [
+      {
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326214625&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326202835&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326184056&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325235027&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325233731&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230108&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230022&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220029&quot;,
+        &quot;value&quot;: 22
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220013&quot;,
+        &quot;value&quot;: 19
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215958&quot;,
+        &quot;value&quot;: 16
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215157&quot;,
+        &quot;value&quot;: 13
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215142&quot;,
+        &quot;value&quot;: 10
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215127&quot;,
+        &quot;value&quot;: 7
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325214203&quot;,
+        &quot;value&quot;: 4
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325180315&quot;,
+        &quot;value&quot;: 2
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325172529&quot;,
+        &quot;value&quot;: 1
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325143447&quot;,
+        &quot;value&quot;: 2
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325141726&quot;,
+        &quot;value&quot;: 1
+      }
+    ],
+    &quot;replay_pass_rate_over_time&quot;: [
+      {
+        &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235545&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326235501&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326225239&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326214625&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326202835&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260326184056&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325235027&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325233731&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230108&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325230022&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220029&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325220013&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215958&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215157&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215142&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325215127&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325214203&quot;,
+        &quot;value&quot;: 0.5
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325180315&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325172529&quot;,
+        &quot;value&quot;: 1
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325143447&quot;,
+        &quot;value&quot;: 0
+      },
+      {
+        &quot;round_id&quot;: &quot;round-20260325141726&quot;,
+        &quot;value&quot;: 1
+      }
+    ],
+    &quot;new_blind_spots_discovered&quot;: 22,
+    &quot;regressions_observed&quot;: 0,
+    &quot;recommendation_counts_by_type&quot;: {
+      &quot;add_to_replay_stable_set&quot;: 22,
+      &quot;investigate_repeat_refund_pattern&quot;: 11,
+      &quot;monitor_in_shadow_mode&quot;: 22,
+      &quot;require_provenance_for_delegated_purchase&quot;: 18,
+      &quot;require_step_up_for_delegated_refunds&quot;: 22,
+      &quot;tighten_refund_review_rule&quot;: 22
+    },
+    &quot;top_recurring_evasion_patterns&quot;: [
+      &quot;No previously promoted replay cases were available for regression retest.&quot;,
+      &quot;Replay regression pass rate fell to 0.00.&quot;,
+      &quot;commerce-challenger-weakened-provenance-purchase promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-challenger-weakened-provenance-purchase promoted because Suspicious challenger behavior evaluated as clean..&quot;,
+      &quot;commerce-s3-approval-removed-after-authorization promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-s3-approval-removed-after-authorization promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-v2-expired-inactive-mandate promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-v2-expired-inactive-mandate promoted because Previously promoted replay case regressed below its expected detection floor..&quot;,
+      &quot;commerce-v3-approval-removed promoted because Challenger behavior scored below its expected minimum detector posture..&quot;,
+      &quot;commerce-v3-approval-removed promoted because Previously promoted replay case regressed below its expected detection floor..&quot;
+    ]
+  }
+}</pre>
+        </section>
+        
+        <section class="card pass">
+          <h2>[PASS] GET /api/v1/benchmark/scheduler/status</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; scheduler_mode=unknown; interval=24h0m0s</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/benchmark/scheduler/status</code></div>
+          <pre>{
+  &quot;data&quot;: {
+    &quot;enabled&quot;: false,
+    &quot;running&quot;: false,
+    &quot;scenario_family&quot;: &quot;commerce&quot;,
+    &quot;interval&quot;: &quot;24h0m0s&quot;,
+    &quot;max_runs&quot;: 7,
+    &quot;executed_runs&quot;: 0,
+    &quot;dry_run&quot;: true,
+    &quot;last_started_at&quot;: &quot;0001-01-01T00:00:00Z&quot;,
+    &quot;next_run_at&quot;: &quot;0001-01-01T00:00:00Z&quot;
+  }
+}</pre>
+        </section>
+        
+        <section class="card fail">
+          <h2>[FAIL] GET /api/v1/operator/reports/round-20260327001551</h2>
+          <div><b>Kind:</b> api</div>
+          <div><b>Summary:</b> http 200; artifacts=0; missing=detection-delta.json,promotion-report.json,recommendation-report.json,round-report.json,round-summary.json</div>
+          
+          <div><b>URL:</b> <code>http://127.0.0.1:8090/api/v1/operator/reports/round-20260327001551</code></div>
+          <pre>{
+  &quot;data&quot;: [
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;detection-delta.json&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/detection-delta.json&quot;,
+      &quot;kind&quot;: &quot;json&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;executive-summary.md&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/executive-summary.md&quot;,
+      &quot;kind&quot;: &quot;markdown&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;promotion-report.json&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/promotion-report.json&quot;,
+      &quot;kind&quot;: &quot;json&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;recommendation-report.json&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/recommendation-report.json&quot;,
+      &quot;kind&quot;: &quot;json&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;round-report.json&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/round-report.json&quot;,
+      &quot;kind&quot;: &quot;json&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;round-report.md&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/round-report.md&quot;,
+      &quot;kind&quot;: &quot;markdown&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;round-summary.json&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/round-summary.json&quot;,
+      &quot;kind&quot;: &quot;json&quot;
+    },
+    {
+      &quot;round_id&quot;: &quot;round-20260327001551&quot;,
+      &quot;artifact_name&quot;: &quot;round-summary.md&quot;,
+      &quot;path&quot;: &quot;reports/round-20260327001551/round-summary.md&quot;,
+      &quot;kind&quot;: &quot;markdown&quot;
+    }
+  ]
+}</pre>
+        </section>
+        
+</body></html>

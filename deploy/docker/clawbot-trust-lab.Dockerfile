@@ -3,10 +3,14 @@ FROM golang:1.26-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache ca-certificates git
 
+ARG TRUST_LAB_VERSION=dev
+ARG TRUST_LAB_COMMIT=unknown
+ARG TRUST_LAB_BUILD_DATE=unknown
+
 COPY clawbot-trust-lab /src/clawbot-trust-lab
 
 WORKDIR /src/clawbot-trust-lab
-RUN go build -o /out/clawbot-trust-lab ./cmd/trust-lab
+RUN go build -ldflags "-X 'clawbot-trust-lab/internal/version.Value=${TRUST_LAB_VERSION}' -X 'clawbot-trust-lab/internal/version.Commit=${TRUST_LAB_COMMIT}' -X 'clawbot-trust-lab/internal/version.BuildDate=${TRUST_LAB_BUILD_DATE}'" -o /out/clawbot-trust-lab ./cmd/trust-lab
 
 FROM alpine:3.21
 

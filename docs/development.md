@@ -33,16 +33,23 @@ make smoke
 make down
 ```
 
-For a full Docker-based validation run:
+For a full developer-mode Docker validation run:
 
 ```bash
 python3 ./scripts/version1_validation_report.py \
+  --mode developer \
   --deployment-mode docker \
   --compose-file deploy/compose/docker-compose.yml \
   --compose-override-file deploy/compose/docker-compose.override.yml \
   --compose-env-file .env \
   --run-round \
   --output-dir ./version1-validation-output
+```
+
+For an appliance-style runtime validation run that skips local developer tooling:
+
+```bash
+make validate-v1-runtime
 ```
 
 ## Local source workflow
@@ -52,7 +59,7 @@ Use this for development only. Docker Compose remains the supported Version 1 de
 1. Copy `.env.example` to `.env`.
 2. Start `clawbot-server`.
 3. Start `clawmem`.
-4. Run `go run ./cmd/trust-lab` or `make run`.
+4. Run `make run`.
 5. Run `cd web && npm install && npm run dev` for UI work.
 
 Reports are written to:
@@ -69,6 +76,7 @@ Reports are written to:
 - `make logs`
 - `make smoke`
 - `make validate-v1`
+- `make validate-v1-runtime`
 - `make run`
 - `make test`
 - `make lint`
@@ -91,3 +99,7 @@ If optional services are ever enabled, validate them explicitly with:
 ```bash
 VALIDATE_OPTIONAL_STACK=1 sh ./scripts/check-env.sh .env
 ```
+
+## Version metadata
+
+`/version` now prefers injected build metadata from the Makefile and Docker build path. If those values are not injected, the service falls back to Go build info such as embedded VCS revision and VCS build time when available.

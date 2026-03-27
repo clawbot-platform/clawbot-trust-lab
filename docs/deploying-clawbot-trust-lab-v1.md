@@ -106,22 +106,23 @@ make smoke
 
 This runs the Version 1 validation script in a core-stack mode:
 
-- Docker compose state
 - trust-lab health/readiness
+- control-plane and clawmem health
 - operator UI reachability
-- benchmark/operator APIs
-- a benchmark round trigger
 
-## Step 6: run the full Version 1 validation report
+It is a fast readiness wait, not the full Version 1 validation report.
+
+## Step 6: run runtime validation on the deployed stack
 
 ```bash
-make validate-v1
+make validate-v1-runtime
 ```
 
-Equivalent direct command:
+For a full developer-mode validation from a CI runner or development workstation:
 
 ```bash
 python3 ./scripts/version1_validation_report.py \
+  --mode developer \
   --deployment-mode docker \
   --compose-file deploy/compose/docker-compose.yml \
   --compose-override-file deploy/compose/docker-compose.override.yml \
@@ -134,6 +135,8 @@ Outputs:
 
 - `version1-validation-output/version1-validation-report.md`
 - `version1-validation-output/version1-validation-report.html`
+
+Runtime mode validates the deployed services only. Developer mode adds repo-quality checks such as Go, lint, security, and web tooling validation.
 
 ## Step 7: confirm Trust Lab is working
 

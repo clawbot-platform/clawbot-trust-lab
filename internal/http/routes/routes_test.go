@@ -2,9 +2,9 @@ package routes
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"clawbot-trust-lab/internal/http/handlers"
@@ -31,7 +31,12 @@ func TestNewRoutesServesHealthAndVersion(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected version 200, got %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "dev") {
-		t.Fatalf("unexpected version body %s", rec.Body.String())
+
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode version payload: %v", err)
+	}
+	if payload["version"] == "" {
+		t.Fatalf("expected non-empty version body %s", rec.Body.String())
 	}
 }

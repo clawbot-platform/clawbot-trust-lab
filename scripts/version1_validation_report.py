@@ -331,6 +331,80 @@ def summarize_scheduler(result: CheckResult) -> CheckResult:
     return result
 
 
+def summarize_version_info(result: CheckResult) -> CheckResult:
+    parsed = result.metadata.get("json") if result.metadata else None
+    if not isinstance(parsed, dict):
+        result.passed = False
+        result.summary += "; invalid json"
+        return result
+
+    version = str(parsed.get("version", "")).strip()
+    commit = str(parsed.get("commit", "")).strip()
+    build_date = str(parsed.get("build_date", "")).strip()
+
+    placeholder_fields: list[str] = []
+    if version in {"", "dev"}:
+        placeholder_fields.append("version")
+    if commit in {"", "unknown"}:
+        placeholder_fields.append("commit")
+    if build_date in {"", "unknown"}:
+        placeholder_fields.append("build_date")
+
+    result.passed = result.passed and not placeholder_fields
+    result.summary += f"; version={version or 'missing'}; commit={commit or 'missing'}; build_date={build_date or 'missing'}"
+    if placeholder_fields:
+        placeholder_text = ", ".join(placeholder_fields)
+        result.details = (result.details + "\n\n" if result.details else "") + f"placeholder fields: {placeholder_text}"
+    return result
+
+
+def summarize_report_listing(result: CheckResult) -> CheckResult:
+    parsed = result.metadata.get("json") if result.metadata else None
+    if not isinstance(parsed, dict):
+        result.passed = False
+        result.summary += "; invalid json"
+        return result
+
+    data = parsed.get("data")
+    if not isinstance(data, list):
+        result.passed = False
+        result.summary += "; missing data list"
+        return result
+
+    names = sorted(
+        str(item.get("name", ""))
+        for item in data
+        if isinstance(item, dict) and item.get("name")
+    )
+    required = {
+        "round-summary.json",
+        "promotion-report.json",
+        "detection-delta.json",
+        "recommendation-report.json",
+        "round-report.json",
+    }
+    missing = sorted(required - set(names))
+    result.passed = result.passed and not missing
+    result.summary += f"; artifacts={len(names)}; missing={','.join(missing) or 'none'}"
+    return result
+
+
+def pick_round_id(results: list[CheckResult]) -> str:
+    for result in results:
+        parsed = result.metadata.get("json") if result.metadata else None
+        if isinstance(parsed, dict):
+            data = parsed.get("data")
+            if isinstance(data, dict) and data.get("id"):
+                return str(data.get("id"))
+
+        round_ids = result.metadata.get("round_ids") if result.metadata else None
+        if isinstance(round_ids, list) and round_ids:
+            first = str(round_ids[0]).strip()
+            if first:
+                return first
+    return ""
+
+
 def summarize_report_files(name: str, reports_dir: Path) -> CheckResult:
     required = {
         "round-summary.json",
@@ -414,6 +488,20 @@ def to_markdown(results: list[CheckResult], meta: dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"Repo root: `{meta['repo_root']}`")
     lines.append("")
+    lines.append(f"Validation mode: `{meta['mode']}`")
+    lines.append("")
+    lines.append(f"Deployment mode: `{meta['deployment_mode']}`")
+    lines.append("")
+    if meta.get("executed_groups"):
+        lines.append("Executed groups:")
+        for item in meta["executed_groups"]:
+            lines.append(f"- {item}")
+        lines.append("")
+    if meta.get("skipped_groups"):
+        lines.append("Skipped groups:")
+        for item in meta["skipped_groups"]:
+            lines.append(f"- {item}")
+        lines.append("")
     lines.append(f"Summary: **{passed} passed / {failed} failed / {total} total**")
     lines.append("")
     lines.append("## Checks")
@@ -476,20 +564,39 @@ code {{ background:#f0f0f0; padding: 2px 4px; border-radius: 4px; }}
 <h1>Clawbot Trust Lab Version 1 Validation Report</h1>
 <div>Generated: {html.escape(meta['generated_at'])}</div>
 <div>Repo root: <code>{html.escape(meta['repo_root'])}</code></div>
+<div>Validation mode: <code>{html.escape(meta['mode'])}</code></div>
+<div>Deployment mode: <code>{html.escape(meta['deployment_mode'])}</code></div>
 <div class=\"stats\">
   <div class=\"badge\">Passed: {passed}</div>
   <div class=\"badge\">Failed: {failed}</div>
   <div class=\"badge\">Total: {total}</div>
 </div>
+{"<section class=\"card\"><h2>Executed groups</h2><ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in meta.get("executed_groups", [])) + "</ul></section>" if meta.get("executed_groups") else ""}
+{"<section class=\"card\"><h2>Skipped groups</h2><ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in meta.get("skipped_groups", [])) + "</ul></section>" if meta.get("skipped_groups") else ""}
 {''.join(blocks)}
 </body></html>"""
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Run Clawbot Trust Lab Version 1 validation checks and generate Markdown + HTML reports.")
+    ap = argparse.ArgumentParser(
+        description="Run Clawbot Trust Lab Version 1 validation checks and generate Markdown + HTML reports."
+    )
     ap.add_argument("--repo-root", default=".", help="Path to clawbot-trust-lab repo root")
     ap.add_argument("--api-base", default="http://127.0.0.1:8090", help="Base URL for trust-lab API")
     ap.add_argument("--ui-base", default="http://127.0.0.1:8091", help="Base URL for the optional operator UI")
+    ap.add_argument(
+        "--mode",
+        choices=["developer", "runtime"],
+        default="developer",
+        help="Validation mode: developer runs repo/tooling checks plus runtime checks; runtime checks only the deployed system.",
+    )
+    ap.add_argument(
+        "--runtime-mode",
+        action="store_const",
+        const="runtime",
+        dest="mode",
+        help="Alias for --mode runtime.",
+    )
     ap.add_argument("--deployment-mode", choices=["local", "docker"], default="local", help="Validate a local source run or the Docker-based Version 1 stack")
     ap.add_argument("--compose-file", default="deploy/compose/docker-compose.yml", help="Core Compose file used for Version 1 Docker deployment checks")
     ap.add_argument("--compose-override-file", default="deploy/compose/docker-compose.override.yml", help="Local override Compose file used for Version 1 Docker deployment checks")
@@ -497,9 +604,9 @@ def main() -> int:
     ap.add_argument("--include-optional-stack", action="store_true", help="Include the optional Compose overlay during Docker deployment checks")
     ap.add_argument("--compose-env-file", default=".env", help="Compose env file used for Version 1 Docker deployment checks")
     ap.add_argument("--skip-compose-checks", action="store_true", help="Skip docker compose checks even when deployment mode is docker")
-    ap.add_argument("--skip-backend", action="store_true")
-    ap.add_argument("--skip-web", action="store_true")
-    ap.add_argument("--skip-api", action="store_true")
+    ap.add_argument("--skip-backend", action="store_true", help="Skip Go developer-tooling checks. Developer mode only.")
+    ap.add_argument("--skip-web", action="store_true", help="Skip web developer-tooling checks. Developer mode only.")
+    ap.add_argument("--skip-api", action="store_true", help="Skip live API/runtime checks in either mode.")
     ap.add_argument("--run-round", action="store_true", help="POST a fresh benchmark round during validation")
     ap.add_argument("--output-dir", default="version1-validation-output")
     args = ap.parse_args()
@@ -509,36 +616,77 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     results: list[CheckResult] = []
+    executed_groups: list[str] = []
+    skipped_groups: list[str] = []
 
-    # Documentation / contract checks
-    results.append(file_exists("README exists", repo_root / "README.md"))
-    results.append(file_exists("api.md exists", repo_root / "docs" / "api.md"))
-    results.append(file_exists("Version 1 deployment guide exists", repo_root / "docs" / "deploying-clawbot-trust-lab-v1.md"))
-    results.append(file_exists("scenario catalog exists", repo_root / "docs" / "version1-scenario-catalog.md"))
-    results.append(text_contains(
-        "README presents Version 1 and planned Version 2 clearly",
-        repo_root / "README.md",
-        ["Version 1", "Docker", "version1_validation_report.py", "Planned Version 2"],
-    ))
-    results.append(text_contains(
-        "api.md includes Recommendation / Trend / Scheduler schemas",
-        repo_root / "docs" / "api.md",
-        ["Recommendation", "TrendSummary", "SchedulerStatus", "SchedulerRunResponse", "legacy aliases", "recommendation-report.json"],
-    ))
-    if args.deployment_mode == "docker":
-        results.append(file_exists("Version 1 compose file exists", repo_root / args.compose_file))
-        results.append(file_exists("Version 1 compose override file exists", repo_root / args.compose_override_file))
-        results.append(file_exists("Version 1 compose env file exists", repo_root / args.compose_env_file))
-        results.append(file_exists("Version 1 optional compose file exists", repo_root / args.compose_optional_file))
-        results.append(file_exists("trust-lab Dockerfile exists", repo_root / "deploy" / "docker" / "clawbot-trust-lab.Dockerfile"))
-        results.append(file_exists("operator UI Dockerfile exists", repo_root / "deploy" / "docker" / "operator-ui" / "Dockerfile"))
+    run_docs = args.mode == "developer"
+    run_backend = args.mode == "developer" and not args.skip_backend
+    run_web = args.mode == "developer" and not args.skip_web
+    run_report_files = args.mode == "developer"
+    run_api_checks = not args.skip_api
+    run_compose_checks = args.deployment_mode == "docker" and not args.skip_compose_checks
 
-    if args.deployment_mode == "docker" and not args.skip_compose_checks:
+    if run_docs:
+        executed_groups.append("repo docs and release-surface checks")
+    else:
+        skipped_groups.append("repo docs and release-surface checks (runtime mode)")
+
+    if run_backend:
+        executed_groups.append("Go developer-tooling checks")
+    else:
+        reason = "runtime mode" if args.mode == "runtime" else "--skip-backend"
+        skipped_groups.append(f"Go developer-tooling checks ({reason})")
+
+    if run_web:
+        executed_groups.append("web developer-tooling checks")
+    else:
+        reason = "runtime mode" if args.mode == "runtime" else "--skip-web"
+        skipped_groups.append(f"web developer-tooling checks ({reason})")
+
+    if run_report_files:
+        executed_groups.append("local report artifact directory checks")
+    else:
+        skipped_groups.append("local report artifact directory checks (runtime mode uses API-visible report checks instead)")
+
+    if run_compose_checks:
+        executed_groups.append("Docker compose state checks")
+    elif args.deployment_mode == "docker":
+        skipped_groups.append("Docker compose state checks (--skip-compose-checks)")
+
+    if run_api_checks:
+        executed_groups.append("live runtime API checks")
+    else:
+        skipped_groups.append("live runtime API checks (--skip-api)")
+
+    if run_docs:
+        results.append(file_exists("README exists", repo_root / "README.md"))
+        results.append(file_exists("api.md exists", repo_root / "docs" / "api.md"))
+        results.append(file_exists("Version 1 deployment guide exists", repo_root / "docs" / "deploying-clawbot-trust-lab-v1.md"))
+        results.append(file_exists("scenario catalog exists", repo_root / "docs" / "version1-scenario-catalog.md"))
+        results.append(text_contains(
+            "README presents Version 1 and planned Version 2 clearly",
+            repo_root / "README.md",
+            ["Version 1", "Docker", "version1_validation_report.py", "Planned Version 2"],
+        ))
+        results.append(text_contains(
+            "api.md includes Recommendation / Trend / Scheduler schemas",
+            repo_root / "docs" / "api.md",
+            ["Recommendation", "TrendSummary", "SchedulerStatus", "SchedulerRunResponse", "legacy aliases", "recommendation-report.json"],
+        ))
+        if args.deployment_mode == "docker":
+            results.append(file_exists("Version 1 compose file exists", repo_root / args.compose_file))
+            results.append(file_exists("Version 1 compose override file exists", repo_root / args.compose_override_file))
+            results.append(file_exists("Version 1 compose env file exists", repo_root / args.compose_env_file))
+            results.append(file_exists("Version 1 optional compose file exists", repo_root / args.compose_optional_file))
+            results.append(file_exists("trust-lab Dockerfile exists", repo_root / "deploy" / "docker" / "clawbot-trust-lab.Dockerfile"))
+            results.append(file_exists("operator UI Dockerfile exists", repo_root / "deploy" / "docker" / "operator-ui" / "Dockerfile"))
+
+    if run_compose_checks:
         compose_env = os.environ.copy()
         compose_cmd = compose_args(args) + ["ps"]
         results.append(run_cmd_text("docker compose ps", compose_cmd, repo_root, timeout=120, env=compose_env))
 
-    if not args.skip_backend:
+    if run_backend:
         backend_cmds = [
             ("go test ./...", ["go", "test", "./..."], 1800),
             ("go vet ./...", ["go", "vet", "./..."], 1200),
@@ -550,7 +698,7 @@ def main() -> int:
             results.append(run_cmd(name, cmd, repo_root, timeout=timeout, env=os.environ.copy()))
 
     web_dir = repo_root / "web"
-    if not args.skip_web and web_dir.exists():
+    if run_web and web_dir.exists():
         web_cmds = [
             ("npm run lint", ["npm", "run", "lint"], 1200),
             ("npm run test", ["npm", "run", "test"], 1800),
@@ -560,26 +708,33 @@ def main() -> int:
         for name, cmd, timeout in web_cmds:
             results.append(run_cmd(name, cmd, web_dir, timeout=timeout, env=os.environ.copy()))
 
-    reports_dir = repo_root / "reports"
-    results.append(summarize_report_files("reports directory contains expected artifacts", reports_dir))
+    if run_report_files:
+        reports_dir = repo_root / "reports"
+        results.append(summarize_report_files("reports directory contains expected artifacts", reports_dir))
 
-    if not args.skip_api:
+    if run_api_checks:
         api = args.api_base.rstrip("/")
-        api_checks = [
+        api_checks: list[CheckResult] = [
             http_json("GET /healthz", "GET", f"{api}/healthz"),
             http_json("GET /readyz", "GET", f"{api}/readyz"),
+            summarize_version_info(http_json("GET /version", "GET", f"{api}/version")),
             summarize_scenarios(http_json("GET /api/v1/scenarios", "GET", f"{api}/api/v1/scenarios")),
         ]
+        run_round_result: CheckResult | None = None
         if args.run_round:
-            api_checks.append(http_json(
+            run_round_result = http_json(
                 "POST /api/v1/benchmark/rounds/run",
                 "POST",
                 f"{api}/api/v1/benchmark/rounds/run",
                 payload={"scenario_family": "commerce"},
-            ))
+            )
+            api_checks.append(run_round_result)
+
+        benchmark_rounds_result = summarize_rounds(http_json("GET /api/v1/benchmark/rounds", "GET", f"{api}/api/v1/benchmark/rounds"))
+        operator_rounds_result = summarize_rounds(http_json("GET /api/v1/operator/rounds", "GET", f"{api}/api/v1/operator/rounds"))
         api_checks.extend([
-            summarize_rounds(http_json("GET /api/v1/benchmark/rounds", "GET", f"{api}/api/v1/benchmark/rounds")),
-            summarize_rounds(http_json("GET /api/v1/operator/rounds", "GET", f"{api}/api/v1/operator/rounds")),
+            benchmark_rounds_result,
+            operator_rounds_result,
             summarize_promotions(http_json("GET /api/v1/operator/promotions", "GET", f"{api}/api/v1/operator/promotions")),
             summarize_recommendations(http_json("GET /api/v1/benchmark/recommendations", "GET", f"{api}/api/v1/benchmark/recommendations")),
             summarize_recommendations(http_json("GET /api/v1/operator/recommendations", "GET", f"{api}/api/v1/operator/recommendations")),
@@ -587,12 +742,34 @@ def main() -> int:
             summarize_trends(http_json("GET /api/v1/operator/trends/summary", "GET", f"{api}/api/v1/operator/trends/summary")),
             summarize_scheduler(http_json("GET /api/v1/benchmark/scheduler/status", "GET", f"{api}/api/v1/benchmark/scheduler/status")),
         ])
+
+        round_id = pick_round_id([item for item in [run_round_result, operator_rounds_result, benchmark_rounds_result] if item is not None])
+        if round_id:
+            api_checks.append(summarize_report_listing(
+                http_json(
+                    f"GET /api/v1/operator/reports/{round_id}",
+                    "GET",
+                    f"{api}/api/v1/operator/reports/{round_id}",
+                )
+            ))
+        else:
+            api_checks.append(CheckResult(
+                name="GET /api/v1/operator/reports/{round_id}",
+                kind="api",
+                passed=True,
+                summary="skipped; no benchmark rounds available",
+            ))
+
         if args.deployment_mode == "docker":
             api_checks.append(http_text("GET operator UI root", args.ui_base.rstrip("/") + "/"))
         results.extend(api_checks)
 
     meta = {
         "generated_at": now_iso(),
+        "mode": args.mode,
+        "deployment_mode": args.deployment_mode,
+        "executed_groups": executed_groups,
+        "skipped_groups": skipped_groups,
         "repo_root": str(repo_root),
     }
 
@@ -602,8 +779,6 @@ def main() -> int:
     html_path = out_dir / "version1-validation-report.html"
     md_path.write_text(md, encoding="utf-8")
     html_path.write_text(html_doc, encoding="utf-8")
-    (out_dir / "version1-validation-report.md").write_text(md, encoding="utf-8")
-    (out_dir / "version1-validation-report.html").write_text(html_doc, encoding="utf-8")
 
     print(f"Wrote Markdown report: {md_path}")
     print(f"Wrote HTML report: {html_path}")
