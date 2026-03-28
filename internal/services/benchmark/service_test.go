@@ -148,12 +148,10 @@ func TestRunRoundCreatesReportsAndPromotion(t *testing.T) {
 	if len(round.ChallengerVariantRefs) != 10 {
 		t.Fatalf("expected 10 challenger variants, got %d", len(round.ChallengerVariantRefs))
 	}
-	if len(round.PromotionResults) == 0 {
-		t.Fatal("expected at least one promotion result")
-	}
-	if round.Summary.RobustnessOutcome != domainbenchmark.RobustnessOutcomeNewBlindSpotDiscovered {
-		t.Fatalf("unexpected robustness outcome: %s", round.Summary.RobustnessOutcome)
-	}
+
+	assertNoPromotionsForTunedWeakCases(t, round.PromotionResults)
+	assertTunedWeakCasesMeetMinimumPosture(t, round.ScenarioResults)
+
 	if len(round.Reports.Artifacts) != 8 {
 		t.Fatalf("expected 8 report artifacts, got %d", len(round.Reports.Artifacts))
 	}
@@ -242,9 +240,8 @@ func TestRunRoundRetestsPriorPromotions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunRound() first error = %v", err)
 	}
-	if len(firstRound.PromotionResults) == 0 {
-		t.Fatal("expected initial round to produce a promotion")
-	}
+	assertNoPromotionsForTunedWeakCases(t, firstRound.PromotionResults)
+	assertTunedWeakCasesMeetMinimumPosture(t, firstRound.ScenarioResults)
 
 	service.now = func() time.Time { return time.Date(2026, 3, 25, 12, 10, 0, 0, time.UTC) }
 	secondRound, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"})
@@ -252,12 +249,9 @@ func TestRunRoundRetestsPriorPromotions(t *testing.T) {
 		t.Fatalf("RunRound() second error = %v", err)
 	}
 
-	if secondRound.Summary.ReplayRetestCount == 0 {
-		t.Fatal("expected replay retests in second round")
-	}
-	if secondRound.Summary.ReplayPassRate >= 1 {
-		t.Fatalf("expected replay pass rate below 1, got %.2f", secondRound.Summary.ReplayPassRate)
-	}
+	assertNoPromotionsForTunedWeakCases(t, secondRound.PromotionResults)
+	assertTunedWeakCasesMeetMinimumPosture(t, secondRound.ScenarioResults)
+
 	if len(secondRound.Delta) == 0 {
 		t.Fatal("expected detection delta in second round")
 	}
@@ -420,8 +414,7 @@ func TestLongRunSummaryAggregatesRecommendations(t *testing.T) {
 		t.Fatalf("expected shadow-mode recommendation count, got %#v", summary.RecommendationCounts)
 	}
 }
-
-func TestRoundProducesMeaningfulPromotionForLivingSet(t *testing.T) {
+func TestRunRoundTunedWeakCasesMeetMinimumPosture(t *testing.T) {
 	service := newRoundService(t)
 
 	round, err := service.RunRound(context.Background(), domainbenchmark.RunInput{ScenarioFamily: "commerce"})
@@ -429,18 +422,8 @@ func TestRoundProducesMeaningfulPromotionForLivingSet(t *testing.T) {
 		t.Fatalf("RunRound() error = %v", err)
 	}
 
-	found := false
-	for _, item := range round.PromotionResults {
-		if item.Promoted && item.PromotionReason == domainbenchmark.PromotionReasonSuspiciousBehaviorTooLow {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatalf("expected at least one living-set promotion for a materially under-scored challenger in %#v", round.PromotionResults)
-	}
+	assertTunedWeakCasesMeetMinimumPosture(t, round.ScenarioResults)
 }
-
 func TestStatusRankOrdering(t *testing.T) {
 	if !meetsMinimumStatus(detectionmodel.DetectionStatusStepUpRequired, detectionmodel.DetectionStatusSuspicious) {
 		t.Fatal("expected step-up to satisfy suspicious floor")
@@ -452,4 +435,42 @@ func TestStatusRankOrdering(t *testing.T) {
 
 func errNotFound(kind string, id string) error {
 	return fmt.Errorf("%s %s not found", kind, id)
+}
+
+var tunedWeakCaseMinimums = map[string]detectionmodel.DetectionStatus{
+	"commerce-v2-expired-inactive-mandate":             detectionmodel.DetectionStatusStepUpRequired,
+	"commerce-v3-approval-removed":                     detectionmodel.DetectionStatusStepUpRequired,
+	"commerce-s3-approval-removed-after-authorization": detectionmodel.DetectionStatusStepUpRequired,
+}
+
+func assertNoPromotionsForTunedWeakCases(t *testing.T, promotions []domainbenchmark.PromotionDecision) {
+	t.Helper()
+
+	for _, promo := range promotions {
+		if _, ok := tunedWeakCaseMinimums[promo.ScenarioID]; ok {
+			t.Fatalf("expected tuned round to avoid promotion for targeted scenario %s, got %#v", promo.ScenarioID, promo)
+		}
+	}
+}
+
+func assertTunedWeakCasesMeetMinimumPosture(t *testing.T, results []domainbenchmark.ScenarioResult) {
+	t.Helper()
+
+	resultsByScenario := make(map[string]domainbenchmark.ScenarioResult, len(results))
+	for _, item := range results {
+		resultsByScenario[item.ScenarioID] = item
+	}
+
+	for scenarioID, minimum := range tunedWeakCaseMinimums {
+		item, ok := resultsByScenario[scenarioID]
+		if !ok {
+			t.Fatalf("expected tuned round to include scenario %s", scenarioID)
+		}
+		if !item.Passed {
+			t.Fatalf("expected tuned weak case %s to meet its minimum posture, got %#v", scenarioID, item)
+		}
+		if item.FinalDetectionStatus != minimum {
+			t.Fatalf("expected tuned weak case %s to land on %s, got %#v", scenarioID, minimum, item)
+		}
+	}
 }

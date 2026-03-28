@@ -53,9 +53,11 @@ type Service struct {
 
 const (
 	ruleMissingMandateDelegatedAction = "missing_mandate_delegated_action"
+	ruleExpiredInactiveMandate        = "expired_inactive_mandate"
 	ruleMissingProvenanceSensitive    = "missing_provenance_sensitive_action"
 	ruleRefundWeakAuthorization       = "refund_weak_authorization"
 	ruleAgentRefundWithoutApproval    = "agent_refund_without_approval"
+	ruleApprovalRemovedAuthorization  = "approval_removed_after_authorization"
 	rulePriorStepUpDecision           = "prior_step_up_decision"
 	ruleRepeatSuspiciousContext       = "repeat_suspicious_context"
 	ruleMerchantScopeDriftDelegated   = "merchant_scope_drift_delegated_action"
@@ -77,6 +79,15 @@ var ruleCatalog = []ruleSpec{
 			Severity:    20,
 		},
 		reason: "delegated action did not carry an active mandate",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleExpiredInactiveMandate,
+			Title:       "Expired or inactive mandate on delegated action",
+			Description: "Expired or inactive mandate coverage should force a stronger minimum posture for delegated actions.",
+			Severity:    25,
+		},
+		reason: "delegated action relied on expired or inactive mandate coverage",
 	},
 	{
 		definition: detectionmodel.RuleDefinition{
@@ -104,6 +115,15 @@ var ruleCatalog = []ruleSpec{
 			Severity:    20,
 		},
 		reason: "agent-driven refund did not carry approval evidence",
+	},
+	{
+		definition: detectionmodel.RuleDefinition{
+			ID:          ruleApprovalRemovedAuthorization,
+			Title:       "Approval was removed before agent refund execution",
+			Description: "Agent-driven refunds should step up when prior approval evidence was explicitly removed after authorization.",
+			Severity:    25,
+		},
+		reason: "refund approval evidence was removed after authorization and before execution",
 	},
 	{
 		definition: detectionmodel.RuleDefinition{
@@ -336,6 +356,9 @@ func (s *Service) evaluateRules(contextData detectionmodel.DetectionContext) []d
 	if f["delegated_actor_present"] && (f["mandate_missing"] || f["mandate_expired"]) {
 		hits = append(hits, buildRuleHit(ruleMissingMandateDelegatedAction, map[string]any{"scenario_id": contextData.ScenarioID}))
 	}
+	if !f["refund_requested"] && f["delegated_actor_present"] && f["mandate_expired"] {
+		hits = append(hits, buildRuleHit(ruleExpiredInactiveMandate, map[string]any{"scenario_id": contextData.ScenarioID}))
+	}
 	if (f["delegated_actor_present"] || f["order_submitted_by_agent"] || f["refund_requested_by_agent"] || f["fully_delegated_action"]) && (f["provenance_missing"] || f["weak_provenance"]) {
 		hits = append(hits, buildRuleHit(ruleMissingProvenanceSensitive, map[string]any{"scenario_id": contextData.ScenarioID, "tier_c_used": contextData.TierProfile.TierCUsed}))
 	}
@@ -344,6 +367,9 @@ func (s *Service) evaluateRules(contextData detectionmodel.DetectionContext) []d
 	}
 	if f["refund_requested_by_agent"] && (f["approval_missing"] || f["approval_removed"]) {
 		hits = append(hits, buildRuleHit(ruleAgentRefundWithoutApproval, map[string]any{"refund_id": contextData.RefundID}))
+	}
+	if f["refund_requested_by_agent"] && f["approval_removed"] {
+		hits = append(hits, buildRuleHit(ruleApprovalRemovedAuthorization, map[string]any{"refund_id": contextData.RefundID}))
 	}
 	if f["trust_decision_step_up"] {
 		hits = append(hits, buildRuleHit(rulePriorStepUpDecision, map[string]any{"trust_decision_refs": contextData.TrustDecisionRefs}))

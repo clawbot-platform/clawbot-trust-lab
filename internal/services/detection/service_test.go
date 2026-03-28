@@ -124,6 +124,36 @@ func newExecutionService() (*scenariosvc.Service, *store.CommerceWorldStore) {
 					TierC: []string{"mandate_status", "provenance_confidence"},
 				},
 			},
+			"commerce-v2-expired-inactive-mandate": {
+				ID:   "commerce-v2-expired-inactive-mandate",
+				Name: "Variant Expired or Inactive Mandate",
+				Type: domainscenario.ScenarioTypeCommercePurchase,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"amount", "merchant_category", "delegated_indicator"},
+					TierB: []string{"recent_attempt_count"},
+					TierC: []string{"mandate_status", "delegation_mode"},
+				},
+			},
+			"commerce-v3-approval-removed": {
+				ID:   "commerce-v3-approval-removed",
+				Name: "Variant Approval Removed",
+				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "delegated_indicator"},
+					TierB: []string{"approval_history"},
+					TierC: []string{"approval_evidence", "delegation_mode"},
+				},
+			},
+			"commerce-s3-approval-removed-after-authorization": {
+				ID:   "commerce-s3-approval-removed-after-authorization",
+				Name: "Approval Removed after Authorization",
+				Type: domainscenario.ScenarioTypeCommerceRefundReview,
+				FeatureModel: domainscenario.FeatureTierModel{
+					TierA: []string{"refund_indicator", "delegated_indicator"},
+					TierB: []string{"approval_history"},
+					TierC: []string{"approval_evidence", "delegation_mode"},
+				},
+			},
 			"commerce-suspicious-refund-attempt": {
 				ID:   "commerce-suspicious-refund-attempt",
 				Name: "Suspicious Refund Attempt",
@@ -298,6 +328,81 @@ func TestEvaluateRepeatedAgentRefundAttemptsNoLongerReturnsClean(t *testing.T) {
 		t.Fatalf("expected repeated agent refund attempts to be escalated, got %#v", result)
 	}
 	assertReasonCode(t, result.ReasonCodes, "repeat_suspicious_context")
+}
+
+func TestEvaluateExpiredInactiveMandateNowRequiresStepUp(t *testing.T) {
+	execution, world := newExecutionService()
+	if _, err := execution.Execute(context.Background(), "commerce-v2-expired-inactive-mandate"); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	service := NewService(
+		world,
+		execution,
+		replayReaderStub{items: []domainreplay.ReplayCase{
+			{ID: "rc-commerce-v2-expired-inactive-mandate", ScenarioID: "commerce-v2-expired-inactive-mandate"},
+		}},
+		memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+			ScenarioID: "commerce-v2-expired-inactive-mandate",
+			Context:    map[string]any{"record_count": 1},
+		}},
+		store.NewDetectionStore(),
+	)
+
+	result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: "commerce-v2-expired-inactive-mandate"})
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	if result.Status != detectionmodel.DetectionStatusStepUpRequired {
+		t.Fatalf("expected step_up_required status, got %#v", result)
+	}
+	if result.Recommendation != detectionmodel.RecommendationStepUp || result.Score < 40 {
+		t.Fatalf("expected stronger expired-mandate posture, got %#v", result)
+	}
+	assertReasonCode(t, result.ReasonCodes, ruleMissingMandateDelegatedAction)
+	assertReasonCode(t, result.ReasonCodes, ruleExpiredInactiveMandate)
+}
+
+func TestEvaluateApprovalRemovedCasesNowRequireStepUp(t *testing.T) {
+	cases := []string{
+		"commerce-v3-approval-removed",
+		"commerce-s3-approval-removed-after-authorization",
+	}
+
+	for _, scenarioID := range cases {
+		t.Run(scenarioID, func(t *testing.T) {
+			execution, world := newExecutionService()
+			if _, err := execution.Execute(context.Background(), scenarioID); err != nil {
+				t.Fatalf("Execute() error = %v", err)
+			}
+
+			service := NewService(
+				world,
+				execution,
+				replayReaderStub{items: []domainreplay.ReplayCase{
+					{ID: "rc-" + scenarioID, ScenarioID: scenarioID},
+				}},
+				memoryClientStub{contextResponse: memory.LoadScenarioContextResponse{
+					ScenarioID: scenarioID,
+					Context:    map[string]any{"record_count": 1},
+				}},
+				store.NewDetectionStore(),
+			)
+
+			result, err := service.Evaluate(context.Background(), EvaluateInput{ScenarioID: scenarioID})
+			if err != nil {
+				t.Fatalf("Evaluate() error = %v", err)
+			}
+			if result.Status != detectionmodel.DetectionStatusStepUpRequired {
+				t.Fatalf("expected step_up_required status, got %#v", result)
+			}
+			if result.Recommendation != detectionmodel.RecommendationStepUp || result.Score < 40 {
+				t.Fatalf("expected stronger approval-removed posture, got %#v", result)
+			}
+			assertReasonCode(t, result.ReasonCodes, ruleAgentRefundWithoutApproval)
+			assertReasonCode(t, result.ReasonCodes, ruleApprovalRemovedAuthorization)
+		})
+	}
 }
 
 func TestEvaluateSuspiciousScenarioIncludesRepeatContextRule(t *testing.T) {
