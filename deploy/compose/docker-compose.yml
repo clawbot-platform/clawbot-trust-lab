@@ -24,6 +24,7 @@ services:
       - trust_lab
 
   control-plane:
+    image: ${CONTROL_PLANE_IMAGE:-ghcr.io/clawbot-platform/clawbot-server}:${CONTROL_PLANE_IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: clawbot-trust-lab/deploy/docker/clawbot-server.Dockerfile
@@ -50,6 +51,7 @@ services:
       - trust_lab
 
   clawmem:
+    image: ${CLAWMEM_IMAGE:-ghcr.io/clawbot-platform/clawmem}:${CLAWMEM_IMAGE_TAG:-local}
     build:
       context: ../../..
       dockerfile: clawbot-trust-lab/deploy/docker/clawmem.Dockerfile
@@ -75,9 +77,10 @@ services:
       - trust_lab
 
   trust-lab:
+    image: ${TRUST_LAB_IMAGE:-ghcr.io/clawbot-platform/clawbot-trust-lab}:${TRUST_LAB_IMAGE_TAG:-local}
     build:
-      context: ../../..
-      dockerfile: clawbot-trust-lab/deploy/docker/clawbot-trust-lab.Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/clawbot-trust-lab.Dockerfile
       args:
         TRUST_LAB_VERSION: ${TRUST_LAB_VERSION:-dev}
         TRUST_LAB_COMMIT: ${TRUST_LAB_COMMIT:-unknown}
@@ -120,9 +123,10 @@ services:
       - trust_lab
 
   trust-lab-ui:
+    image: ${TRUST_LAB_UI_IMAGE:-ghcr.io/clawbot-platform/clawbot-trust-lab-ui}:${TRUST_LAB_UI_IMAGE_TAG:-local}
     build:
-      context: ../../..
-      dockerfile: clawbot-trust-lab/deploy/docker/operator-ui/Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/operator-ui/Dockerfile
     restart: unless-stopped
     ports:
       - "${TRUST_LAB_UI_HOST}:${TRUST_LAB_UI_PORT}:8080"

@@ -29,11 +29,17 @@ The optional overlay file is:
 
 - [`deploy/compose/docker-compose.optional.yml`](../deploy/compose/docker-compose.optional.yml)
 
-Version 1 currently supports a local-build Docker path using adjacent source checkouts of:
+Version 1 supports:
 
-- `clawbot-server`
-- `clawbot-trust-lab`
-- `clawmem`
+- local developer builds using adjacent source checkouts of `clawbot-server`, `clawbot-trust-lab`, and `clawmem`
+- Docker-only runtime hosts that pull published GHCR images
+
+Published images:
+
+- `ghcr.io/clawbot-platform/clawbot-server`
+- `ghcr.io/clawbot-platform/clawmem`
+- `ghcr.io/clawbot-platform/clawbot-trust-lab`
+- `ghcr.io/clawbot-platform/clawbot-trust-lab-ui`
 
 ## Core stack
 
@@ -59,13 +65,38 @@ cp .env.example .env
 sh ./scripts/check-env.sh .env
 ```
 
+For runtime hosts, set the image tags in `.env` to the published release you want to run. Example baseline:
+
+```bash
+CONTROL_PLANE_IMAGE_TAG=drq-v1-baseline-20260329
+CLAWMEM_IMAGE_TAG=drq-v1-baseline-20260329
+TRUST_LAB_IMAGE_TAG=drq-v1-baseline-20260329
+TRUST_LAB_UI_IMAGE_TAG=drq-v1-baseline-20260329
+```
+
 ## Step 2: start the core stack
+
+Local developer build path:
 
 ```bash
 make up
 ```
 
-Equivalent raw Compose command:
+Runtime-host image pull path:
+
+```bash
+docker compose --env-file .env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.override.yml \
+  pull
+
+docker compose --env-file .env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.override.yml \
+  up -d
+```
+
+Equivalent raw local-build Compose command:
 
 ```bash
 docker compose --env-file .env \
@@ -137,6 +168,16 @@ Outputs:
 - `version1-validation-output/version1-validation-report.html`
 
 Runtime mode validates the deployed services only. Developer mode adds repo-quality checks such as Go, lint, security, and web tooling validation.
+
+## GHCR package note
+
+If a package name already exists in GHCR from an older manual or CLI push and is not linked to the repository, correct that in GitHub Packages before relying on the new publish workflow:
+
+- connect the package to this repository, or
+- delete the stale package and republish from Actions, or
+- publish once to a temporary image name if cleanup has to be staged
+
+Do not introduce PAT-based local publishing as a workaround.
 
 ## Step 7: confirm Trust Lab is working
 

@@ -57,14 +57,36 @@ This repo now includes a repo-native Version 1 Docker workflow:
 - a core compose stack under [`deploy/compose/docker-compose.yml`](./deploy/compose/docker-compose.yml)
 - a local-development override under [`deploy/compose/docker-compose.override.yml`](./deploy/compose/docker-compose.override.yml)
 - an optional overlay file under [`deploy/compose/docker-compose.optional.yml`](./deploy/compose/docker-compose.optional.yml)
-- local build paths for `clawbot-server`, `clawmem`, `clawbot-trust-lab`, and `trust-lab-ui`
 
-Version 1 currently supports one honest Docker build model:
+Version 1 now supports two honest Docker paths:
 
-- `clawbot-server`, `clawmem`, and `clawbot-trust-lab` are checked out side by side under the same parent directory
-- `make up` builds the sibling services from those adjacent checkouts
+- local developer builds from adjacent source checkouts
+- runtime-host pulls from GHCR
 
-There is no published-image requirement documented here because this repo does not currently depend on an image-publishing flow for the supported Version 1 path.
+Published images:
+
+- `ghcr.io/clawbot-platform/clawbot-server`
+- `ghcr.io/clawbot-platform/clawmem`
+- `ghcr.io/clawbot-platform/clawbot-trust-lab`
+- `ghcr.io/clawbot-platform/clawbot-trust-lab-ui`
+
+Tag examples:
+
+- baseline: `drq-v1-baseline-20260329`
+- tuned: `drq-v1-tuned-20260401`
+
+Runtime hosts such as `optiplex-1`, `optiplex-2`, and `thinkpad-p50` should pull published images instead of building locally. They do not need Go, npm, or other developer tooling for deployment.
+
+Publish from GitHub Actions with the `publish-image` workflow and a `release_tag` input such as:
+
+- `drq-v1-baseline-20260329`
+- `drq-v1-tuned-20260401`
+
+If a stale GHCR package already exists from an older manual or CLI push and is not linked to the repository, fix that before relying on the publish workflow:
+
+- connect the package to the repository in GitHub Packages, or
+- delete the stale package and republish from Actions, or
+- publish once to a temporary image name if cleanup has to be staged
 
 ## Core vs optional stack
 
@@ -93,6 +115,8 @@ CI and default Compose usage should continue using the named-volume core stack.
 
 ## Quick start with Docker
 
+### Local developer build path
+
 1. Copy the shared env file:
 
 ```bash
@@ -119,6 +143,29 @@ curl http://127.0.0.1:8091/
 
 ```bash
 make smoke
+```
+
+### Runtime-host image pull path
+
+Set the GHCR tags in `.env`, then pull and start:
+
+```bash
+CONTROL_PLANE_IMAGE_TAG=drq-v1-baseline-20260329
+CLAWMEM_IMAGE_TAG=drq-v1-baseline-20260329
+TRUST_LAB_IMAGE_TAG=drq-v1-baseline-20260329
+TRUST_LAB_UI_IMAGE_TAG=drq-v1-baseline-20260329
+```
+
+```bash
+docker compose --env-file .env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.override.yml \
+  pull
+
+docker compose --env-file .env \
+  -f deploy/compose/docker-compose.yml \
+  -f deploy/compose/docker-compose.override.yml \
+  up -d
 ```
 
 5. Run runtime validation against the deployed stack:
