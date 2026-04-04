@@ -50,6 +50,66 @@ The trust lab owns:
 - promotions, recommendations, and reports
 - the thin operator UI
 
+## DRQ week-run result
+
+The repository now includes a completed week-run benchmark outcome for the commerce scenario family.
+
+### Run window
+
+- March 28, 2026 to April 4, 2026
+- image-based distributed homelab deployment
+- Docker-only runtime hosts using published GHCR images
+
+### Phase split
+
+- **Phase A** — baseline detector (`v1.0.0-9-g45d296f`)
+- **Phase B** — tuned detector (`v1.0.0-10-g796421c`)
+
+### Headline result
+
+| Metric                 | Phase A | Phase B |
+|------------------------|--------:|--------:|
+| Rounds                 |      13 |      14 |
+| Total promotions       |      39 |       0 |
+| Avg promotions / round |    3.00 |    0.00 |
+| Avg replay pass rate   |    0.08 |    1.00 |
+| Zero-promotion rounds  |       0 |      14 |
+| Perfect replay rounds  |       1 |      14 |
+
+### What Phase A achieved
+
+Phase A established the baseline benchmark behavior and proved that the harness could repeatedly surface meaningful weaknesses over time rather than only in a one-time run.
+
+It repeatedly exposed three recurring weak cases:
+
+- `commerce-v2-expired-inactive-mandate`
+- `commerce-v3-approval-removed`
+- `commerce-s3-approval-removed-after-authorization`
+
+Those cases were promoted repeatedly, showing that the baseline detector was underscoring important delegated-commerce risk patterns.
+
+### What Phase B achieved
+
+Phase B used a narrow tuning pass that targeted only the recurring weak cases from Phase A.
+
+The tuned detector:
+
+- reduced promotions from 39 total to 0
+- improved replay pass rate from 0.08 average to 1.00
+- moved the three targeted weak cases from `suspicious / passed=false` to `step_up_required / passed=true`
+- preserved those gains across repeated rounds rather than only one tuned execution
+
+### Weekly run reports
+
+The finished run artifacts are documented in:
+
+- [`docs/drq-week-run-summary.md`](./docs/drq-week-run-summary.md)
+- [`docs/DRQ Week-Run Assessment-Executive Report.md`](./docs/DRQ%20Week-Run%20Assessment-Executive%20Report.md)
+- [`docs/DRQ Week-Run Effort Review.md`](./docs/DRQ%20Week-Run%20Effort%20Review.md)
+- [`docs/DRQ Week-Run Final Assessment.md`](./docs/DRQ%20Week-Run%20Final%20Assessment.md)
+
+These documents are now the reference summary of what Version 1 achieved in a real scheduled run.
+
 ## Docker installability
 
 This repo now includes a repo-native Version 1 Docker workflow:
@@ -334,19 +394,45 @@ SonarCloud ingests both Go and web coverage and enforces the quality gate in CI.
 Start here:
 
 - [Deploying Clawbot Trust Lab Version 1](./docs/deploying-clawbot-trust-lab-v1.md)
-- [API](./docs/api.md)
-- [Architecture](./docs/architecture.md)
-- [Benchmark model](./docs/benchmark-model.md)
-- [Reporting spec](./docs/reporting-spec.md)
-- [Production bridge](./docs/production-bridge.md)
-
-Supporting reference docs:
-
 - [Version 1 product brief](./docs/version-1-deployment-instructions.md)
-- [Planned Version 2](./docs/version-2-deployment-instructions.md)
-- [Version 1 scenario catalog](docs/version-1-scenario-catalog.md)
+- [Version 1 scenario catalog](./docs/version-1-scenario-catalog.md)
+- [Production bridge](./docs/production-bridge.md)
+- [Benchmark model](./docs/benchmark-model.md)
+- [Commerce model](./docs/commerce-model.md)
+
+Weekly run references:
+
+- [DRQ Week-Run Summary](./docs/drq-week-run-summary.md)
+- [DRQ Week-Run Assessment — Executive Report](./docs/DRQ%20Week-Run%20Assessment-Executive%20Report.md)
+- [DRQ Week-Run Effort Review](./docs/DRQ%20Week-Run%20Effort%20Review.md)
+- [DRQ Week-Run Final Assessment](./docs/DRQ%20Week-Run%20Final%20Assessment.md)
 
 Historical `docs/phase-*` files remain as implementation history and archive material, not as the main onboarding surface.
+
+## Next steps
+
+The week run established the tuned detector as the stronger benchmark candidate state. The next step is to build from that Phase B baseline rather than restarting from the original baseline.
+
+### Near-term next steps
+
+- expand challenger coverage beyond the initial weak-case family
+- strengthen replay-stable governance and regression gating
+- improve automated phase comparison and long-run reporting
+- make blind-spot history versus current blind spots easier to distinguish
+- preserve the tuned detector as the new replay reference point
+
+### LLM roadmap
+
+Version 1 intentionally kept the detector core deterministic.
+
+If an LLM is introduced in a future version, the recommended order is:
+
+1. report and explanation sidecar
+2. recommendation clustering and analyst narrative support
+3. optional shadow-mode advisory scoring
+4. only later, if justified, any deeper detector-path role
+
+The next version should not collapse deterministic benchmark logic and LLM reasoning into one opaque path.
 
 ## Planned Version 2
 
@@ -361,3 +447,8 @@ It is expected to add:
 
 It is not implemented in this repository as the current supported mode.
 Version 1 remains the documented and supported release surface today.
+
+## License
+
+This repository is released under the [MIT License](./LICENSE).
+
