@@ -1,6 +1,5 @@
 # Benchmark Model
 
-Phase 7 introduces the Red Queen MVP round model.
 
 ## BenchmarkRound
 

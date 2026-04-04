@@ -1,6 +1,5 @@
 # Commerce Model
 
-Phase 5 keeps the commerce world intentionally small.
 
 ## Entities
 

@@ -1,4 +1,4 @@
-# Phase 9 Scenario Catalog
+# Version 1 Scenario Catalog
 ## Clawbot Trust Lab for Agentic Commerce
 ## Replay-Driven Adversarial Regression Harness for Fraud Controls
 

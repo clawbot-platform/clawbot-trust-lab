@@ -344,7 +344,7 @@ Supporting reference docs:
 
 - [Version 1 product brief](./docs/version-1-deployment-instructions.md)
 - [Planned Version 2](./docs/version-2-deployment-instructions.md)
-- [Version 1 scenario catalog](docs/version1-scenario-catalog.md)
+- [Version 1 scenario catalog](docs/version-1-scenario-catalog.md)
 
 Historical `docs/phase-*` files remain as implementation history and archive material, not as the main onboarding surface.
 
